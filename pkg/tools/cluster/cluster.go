@@ -85,10 +85,10 @@ Get cluster information. The response will contain:
 	}
 }
 
-func GetClusterLabel(ksconfig *kubesphere.KSConfig) server.ServerTool {
+func GetClusterTags(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
-		Tool: mcp.NewTool("get_cluster_labels", mcp.WithDescription(`
-Retrieve the paginated cluster labels map. The response will include:
+		Tool: mcp.NewTool("get_cluster_tags", mcp.WithDescription(`
+Retrieve the paginated cluster tags map. The response will include:
 - map key is label key
 - map value is a value array.
  - value: is the actual value of key.

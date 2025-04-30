@@ -28,7 +28,7 @@ Retrieve the paginated roles list. The response will contain:
 			mcp.WithNumber("limit", mcp.Description("Number of roles displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of roles to display. Default is "+constants.DefPage)),
 			mcp.WithString("level", mcp.Description("role level. it's four level: global (platform-level), cluster (cluster-level), workspace (workspace-level), namespace (project-level)"), mcp.Required()),
-			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, workspace, namespace.")),
+			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace.")),
 			mcp.WithString("workspace", mcp.Description("role in which workspace. require when level is workspace.")),
 			mcp.WithString("project", mcp.Description("role in which project. require when level is namespace.")),
 		),
@@ -78,15 +78,11 @@ Retrieve the paginated roles list. The response will contain:
 
 				return mcp.NewToolResultText(string(data)), nil
 			case constants.WorkspaceLevel:
-				cluster, ok := request.Params.Arguments["cluster"].(string)
-				if !ok || cluster == "" {
-					return nil, errors.Errorf("cluster is not allow empty when level is workspace")
-				}
 				workspace, ok := request.Params.Arguments["workspace"].(string)
 				if !ok || workspace == "" {
 					return nil, errors.Errorf("workspace is not allow empty when level is workspace")
 				}
-				client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, cluster)
+				client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
 				if err != nil {
 					return nil, err
 				}
@@ -141,18 +137,33 @@ Get role information by roleName. The response will contain:
 			// deal request params
 			level := ""
 			if reqLevel, ok := request.Params.Arguments["level"].(string); ok &&
-				(reqLevel == constants.PlatformLevel || reqLevel == constants.WorkspaceLevel || reqLevel == constants.ProjectLevel) {
+				(reqLevel == constants.PlatformLevel || reqLevel == constants.ClusterLevel || reqLevel == constants.WorkspaceLevel || reqLevel == constants.ProjectLevel) {
 				level = reqLevel
 			}
 			rolename := request.Params.Arguments["rolename"].(string)
 			// deal http request
-			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
-			if err != nil {
-				return nil, err
-			}
 			switch level {
 			case constants.PlatformLevel:
+				client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
+				if err != nil {
+					return nil, err
+				}
 				data, err := client.Get().Resource(iamv1beta1.ResourcesPluralGlobalRole).Name(rolename).Do(ctx).Raw()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(string(data)), nil
+			case constants.ClusterLevel:
+				cluster, ok := request.Params.Arguments["cluster"].(string)
+				if !ok || cluster == "" {
+					return nil, errors.Errorf("cluster is not allow empty when level is cluster")
+				}
+				client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, cluster)
+				if err != nil {
+					return nil, err
+				}
+				data, err := client.Get().Resource(iamv1beta1.ResourcesPluralClusterRole).Name(rolename).Do(ctx).Raw()
 				if err != nil {
 					return nil, err
 				}
@@ -163,6 +174,10 @@ Get role information by roleName. The response will contain:
 				if !ok || workspace == "" {
 					return nil, errors.Errorf("workspace is not allow empty when level is workspace")
 				}
+				client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
+				if err != nil {
+					return nil, err
+				}
 				data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).SubResource(iamv1beta1.ResourcesPluralWorkspaceRole, rolename).Do(ctx).Raw()
 				if err != nil {
 					return nil, err
@@ -170,9 +185,17 @@ Get role information by roleName. The response will contain:
 
 				return mcp.NewToolResultText(string(data)), nil
 			case constants.ProjectLevel:
+				cluster, ok := request.Params.Arguments["cluster"].(string)
+				if !ok || cluster == "" {
+					return nil, errors.Errorf("cluster is not allow empty when level is namespace")
+				}
 				project, ok := request.Params.Arguments["project"].(string)
 				if !ok || project == "" {
 					return nil, errors.Errorf("project is not allow empty when level is namespace")
+				}
+				client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, cluster)
+				if err != nil {
+					return nil, err
 				}
 				data, err := client.Get().Namespace(project).Resource(iamv1beta1.ResourcesPluralRole).Name(rolename).Do(ctx).Raw()
 				if err != nil {
@@ -199,15 +222,16 @@ items: An array of globalRole data where:
   - specific metadata.annotations fields indicate:
   - iam.kubesphere.io/scope: the permission level. typically includes three scopes: global (platform-level access), workspace (workspace-level access), namespace (project-level access)
 `),
-			mcp.WithString("level", mcp.Description("permission level. Default is all")),
+			mcp.WithString("level", mcp.Description("role level. it's three level: global (platform-level), workspace (workspace-level), namespace (project-level). Default is all")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			label := []string{"kubesphere.io/managed=true"}
 			if reqLevel, ok := request.Params.Arguments["level"].(string); ok &&
-				(reqLevel == "global" || reqLevel == "workspace" || reqLevel == "namespace") {
+				(reqLevel == constants.PlatformLevel || reqLevel == constants.ClusterLevel || reqLevel == constants.WorkspaceLevel || reqLevel == constants.ProjectLevel) {
 				label = append(label, fmt.Sprintf("iam.kubesphere.io/scope=%s", reqLevel))
 			}
+
 			// deal http request
 			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
 			if err != nil {

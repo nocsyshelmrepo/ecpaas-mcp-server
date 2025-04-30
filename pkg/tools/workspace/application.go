@@ -104,7 +104,7 @@ Retrieve the paginated application list by project, it install by project. The r
 func GetApplication(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_application", mcp.WithDescription(`
-Retrieve the paginated application list by applicationName and project. The response will include:
+Get the application information by applicationName and project. The response will include:
 - applicationName: Maps to metadata.name
 - specific metadata.labels fields indicate:
  - kubesphere.io/cluster: which cluster belong to.
@@ -141,7 +141,7 @@ Retrieve the paginated application list by applicationName and project. The resp
 func GetApplicationVersion(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_application_version", mcp.WithDescription(`
-Retrieve the paginated application list by applicationName and project. The response will include:
+Retrieve the paginated application versions list by applicationName and project. The response will include:
 1. items: An array of application versions objects containing:
 - applicationName: Maps to metadata.name
 - specific metadata.labels fields indicate:

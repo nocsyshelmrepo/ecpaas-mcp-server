@@ -21,8 +21,8 @@ contexts:
 - context:
     cluster: kubesphere
     user: admin
-  name: admin@kubesphere
-current-context: admin@kubesphere
+  name: kubesphere
+current-context: kubesphere
 kind: Config
 preferences: {}
 users:
@@ -69,8 +69,8 @@ contexts:
 - context:
     cluster: kubesphere
     user: admin
-  name: admin@kubesphere
-current-context: admin@kubesphere
+  name: kubesphere
+current-context: kubesphere
 kind: Config
 preferences: {}
 users:

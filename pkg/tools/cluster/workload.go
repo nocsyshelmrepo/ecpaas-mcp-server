@@ -6,6 +6,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	storagev1 "k8s.io/api/storage/v1"
+	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
 
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/constants/v1alpha3"
@@ -55,6 +57,9 @@ the item actual is node resource in kubernetes.
 func ListProjects(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_projects", mcp.WithDescription(`
+Get project from cluster or workspace.
+when Get from cluster. should set cluster param.
+when Get from workspace. should set workspace and cluster which has assign to this workspace.
 Retrieve the paginated projects list. The response will include:
 1. items: An array of projects objects containing:
 the item actual is namespace resource in kubernetes.
@@ -65,10 +70,15 @@ the item actual is namespace resource in kubernetes.
 			mcp.WithNumber("limit", mcp.Description("Number of projects displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of projects to display. Default is "+constants.DefPage)),
 			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
+			workspace := ""
+			if reqWorkspace, ok := request.Params.Arguments["workspace"].(string); ok && reqWorkspace != "" {
+				workspace = reqWorkspace
+			}
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -78,16 +88,31 @@ the item actual is namespace resource in kubernetes.
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
-			if err != nil {
-				return nil, err
-			}
-			data, err := client.Get().Resource("namespaces").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
-			if err != nil {
-				return nil, err
-			}
+			switch workspace {
+			case "": // from cluster
+				client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
+				if err != nil {
+					return nil, err
+				}
+				data, err := client.Get().Resource("namespaces").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+				if err != nil {
+					return nil, err
+				}
 
-			return mcp.NewToolResultText(string(data)), nil
+				return mcp.NewToolResultText(string(data)), nil
+			default: // from workspace
+				client, err := ksconfig.RestClient(tenantv1beta1.SchemeGroupVersion, cluster)
+				if err != nil {
+					return nil, err
+				}
+				data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).SubResource("namespaces").
+					Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(string(data)), nil
+			}
 		},
 	}
 }
@@ -109,7 +134,7 @@ the item actual is deployments resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -162,7 +187,7 @@ the item actual is statefulsets resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -215,7 +240,7 @@ the item actual is daemonsets resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -268,7 +293,7 @@ the item actual is jobs resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -321,7 +346,7 @@ the item actual is cronjobs resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -374,7 +399,7 @@ the item actual is pods resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -427,7 +452,7 @@ the item actual is services resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -480,7 +505,7 @@ the item actual is ingresses resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -533,7 +558,7 @@ the item actual is secrets resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -586,7 +611,7 @@ the item actual is configmaps resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -639,7 +664,7 @@ the item actual is serviceaccounts resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -730,7 +755,7 @@ the item actual is persistentvolumeclaims resource in kubernetes.
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && project != "" {
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
 			}
 			limit := constants.DefLimit
@@ -828,7 +853,7 @@ the item actual is storageclasses resource in kubernetes.
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
+			client, err := ksconfig.RestClient(storagev1.SchemeGroupVersion, cluster)
 			if err != nil {
 				return nil, err
 			}

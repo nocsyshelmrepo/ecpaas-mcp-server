@@ -62,7 +62,7 @@ type KSConfig struct {
 	config *restclient.Config
 
 	// ksClientByType stores structured type metadata
-	ksClientByType map[schema.GroupVersion]*ksClient
+	ksClientByType map[string]*ksClient
 
 	mu sync.RWMutex
 }
@@ -84,13 +84,18 @@ func NewKSConfig(config *restclient.Config, apiserver string) (*KSConfig, error)
 	return &KSConfig{
 		httpClient:     httpclient,
 		config:         config,
-		ksClientByType: make(map[schema.GroupVersion]*ksClient),
+		ksClientByType: make(map[string]*ksClient),
 	}, nil
 }
 
 func (c *KSConfig) RestClient(gv schema.GroupVersion, cluster string) (restclient.Interface, error) {
+	apiPath := "kapis"
+	if cluster != "" {
+		apiPath = "clusters/" + cluster + "/kapis"
+	}
+
 	c.mu.RLock()
-	r, known := c.ksClientByType[gv]
+	r, known := c.ksClientByType[apiPath+"/"+gv.String()]
 	c.mu.RUnlock()
 
 	if known {
@@ -101,13 +106,10 @@ func (c *KSConfig) RestClient(gv schema.GroupVersion, cluster string) (restclien
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	restconfig := restclient.CopyConfig(c.config)
-	restconfig.GroupVersion = &gv
-	if cluster != "" {
-		restconfig.APIPath = "clusters/" + cluster + "/kapis"
-	} else {
-		restconfig.APIPath = "kapis"
-	}
 	restconfig.NegotiatedSerializer = kubespherescheme.Codecs
+	restconfig.GroupVersion = &gv
+	restconfig.APIPath = apiPath
+
 	restclient, err := restclient.UnversionedRESTClientForConfigAndClient(restconfig, c.httpClient)
 	if err != nil {
 		return nil, err
@@ -117,7 +119,7 @@ func (c *KSConfig) RestClient(gv schema.GroupVersion, cluster string) (restclien
 		config:     restconfig,
 		tokenCache: make(map[string]*token),
 	}
-	c.ksClientByType[gv] = ksclient
+	c.ksClientByType[apiPath+"/"+gv.String()] = ksclient
 
 	return ksclient, nil
 }

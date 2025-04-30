@@ -66,10 +66,10 @@ func newStudioCommand() *cobra.Command {
 				userrole.ListRoles(ksconfig), userrole.GetRole(ksconfig), userrole.ListPermissions(ksconfig),
 				// register workspace
 				workspace.ListWorkspaces(ksconfig), workspace.GetWorkspace(ksconfig), workspace.ListWorkspaceMembers(ksconfig), workspace.GetWorkspaceQuotas(ksconfig),
-				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplicationVersion(ksconfig),
-				workspace.ListProjects(ksconfig), workspace.GetWorkspace(ksconfig), workspace.ListProjectMembers(ksconfig),
+				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplication(ksconfig), workspace.GetApplicationVersion(ksconfig),
+				workspace.GetWorkspace(ksconfig), workspace.ListProjectMembers(ksconfig),
 				// register cluster
-				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.GetClusterLabel(ksconfig), cluster.ListClusterMembers(ksconfig),
+				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.GetClusterTags(ksconfig), cluster.ListClusterMembers(ksconfig),
 				cluster.ListNodes(ksconfig), cluster.ListProjects(ksconfig), cluster.ListDeployments(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.ListDaemonsets(ksconfig),
 				cluster.ListJobs(ksconfig), cluster.ListCronJobs(ksconfig), cluster.ListPods(ksconfig), cluster.ListServices(ksconfig), cluster.ListIngresses(ksconfig),
 				cluster.ListSecrets(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig),
@@ -115,10 +115,10 @@ func newSSECommand() *cobra.Command {
 				userrole.ListRoles(ksconfig), userrole.GetRole(ksconfig), userrole.ListPermissions(ksconfig),
 				// register workspace
 				workspace.ListWorkspaces(ksconfig), workspace.GetWorkspace(ksconfig), workspace.ListWorkspaceMembers(ksconfig), workspace.GetWorkspaceQuotas(ksconfig),
-				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplicationVersion(ksconfig),
-				workspace.ListProjects(ksconfig), workspace.GetWorkspace(ksconfig), workspace.ListProjectMembers(ksconfig),
+				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplication(ksconfig), workspace.GetApplicationVersion(ksconfig),
+				workspace.GetWorkspace(ksconfig), workspace.ListProjectMembers(ksconfig),
 				// register cluster
-				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.GetClusterLabel(ksconfig), cluster.ListClusterMembers(ksconfig),
+				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.GetClusterTags(ksconfig), cluster.ListClusterMembers(ksconfig),
 				cluster.ListNodes(ksconfig), cluster.ListProjects(ksconfig), cluster.ListDeployments(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.ListDaemonsets(ksconfig),
 				cluster.ListJobs(ksconfig), cluster.ListCronJobs(ksconfig), cluster.ListPods(ksconfig), cluster.ListServices(ksconfig), cluster.ListIngresses(ksconfig),
 				cluster.ListSecrets(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig),
