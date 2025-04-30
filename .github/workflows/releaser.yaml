@@ -39,10 +39,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LDFLAGS: ${{ steps.prepare.outputs.ldflags }}
-
-      - name: Upload Extra File
-        run: |
-          TAG=${{ steps.prepare.outputs.version }}
-          gh release upload "$TAG" config/capkk/release/* --clobber
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
