@@ -2,20 +2,17 @@
 The KubeSphere MCP Server is a [Model Context Protocol(MCP)](https://modelcontextprotocol.io/introduction) server that provides integration with KubeSphere APIs, enabling to get resources from KubeSphere. Divided into four tools modules: `Workspace Management`, `Cluster Management`, `User and Roles`, `Extensions Center`.
 
 ## Prerequisites
-1. You must have a KubeSphere cluster. contains: Access Address, Username, Password.
-2. Should get ks-mcp-server binary to run the server by stdio. this binary should put in `$PATH`
-3. You should have a MCP Clients. like: Claude Desktop, Cursor etc. 
+You must have a KubeSphere cluster. contains: Access Address, Username, Password.
 
 ## Installation
-### Usage with Claude Desktop
-#### Generate KSConfig
-The format is similar to kubeconfig. This configuration contains HTTP connector information. The default context for KubeSphere is `kubesphere`, which can be modified via the environment variable `KUBESPHERE_CONTEXT`. The server address in the configuration must use HTTPS (if your endpoint uses HTTP, you should override it using the `--ks-apiserver` argument).
+### Generate KSConfig
+The format is similar to kubeconfig. This configuration contains HTTP connector information. The default context for KubeSphere is `kubesphere`, which can be modified via the environment variable `KUBESPHERE_CONTEXT`.
 ```yaml
 apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority-data: xxxx
-    server: https://kubesphere.com
+    certificate-authority-data: <CA file>
+    server: <Server Address>
   name: kubesphere
 contexts:
 - context:
@@ -28,77 +25,62 @@ preferences: {}
 users:
 - name: admin
   user:
-    username: xxxx
-    password: xxxx
+    username: <KubeSphere Username>
+    password: <KubeSphere Password>
 ```
-#### Get ks-mcp-server binary
+`<CA file>`: **Optional**. Fill in the CA certificate in base64-encoded format when KubeSphere is accessed via HTTPS.    
+`<Server Address>`: **Required** Must be an HTTPS address. (If using HTTP, enter any HTTPS address here, then modify via the parameter `--ks-apiserver http://xxx`)    
+`<KubeSphere Username>`: **Required** The user for the KubeSphere cluster.    
+`<KubeSphere Password>`: **Required** The password for the KubeSphere cluster user.    
+
+### Get ks-mcp-server binary
 you can run command `go build -o ks-mcp-server cmd/main.go` or download from (github releases)[https://github.com/kubesphere/ks-mcp-server/releases]
 and then move it to `$PATH`.
 
-#### Configuration MCP Server in Claude Desktop
-According to [Claude Desktop](https://modelcontextprotocol.io/quickstart/user)
+### Configuration MCP Server in AI Agent
+
+#### Claude Desktop
+1. According to [Claude Desktop](https://modelcontextprotocol.io/quickstart/user)
 should change the MCP Configuration. like:
 ```json
 {
   "mcpServers": {
-    "KS-MCP-Server": {
+    "KubeSphere": {
       "args": [
         "stdio",
-        "--ksconfig", "[to-be-replace]/kubeconfig",
-        "--ks-apiserver", "http://[to-be-replace]:30880"
+        "--ksconfig", "<ksconfig file absolute path>",
+        "--ks-apiserver", "<KubeSphere Address>"
       ],
       "command": "ks-mcp-server"
     }
   }
 }
 ```
-then chat with mcp server
+`<ksconfig file absolute path>`: **Required** The absolute path of the ksconfig file.        
+`<KubeSphere Address>`: **Optional (but required for HTTP access)** The access address of the KubeSphere cluster, supporting either the `ks-console` or `ks-apiserver` service address (e.g., `http://172.10.0.1:30880`).   
+
+2. chat with mcp server
 ![claude desktop result](statics/claude-desktop.png)
 
-### Usage with Cursor
-#### Generate KSConfig
-The format is similar to kubeconfig. This configuration contains HTTP connector information. The default context for KubeSphere is `kubesphere`, which can be modified via the environment variable `KUBESPHERE_CONTEXT`. The server address in the configuration must use HTTPS (if your endpoint uses HTTP, you should override it using the `--ks-apiserver` argument).
-```yaml
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: xxxx
-    server: https://kubesphere.com
-  name: kubesphere
-contexts:
-- context:
-    cluster: kubesphere
-    user: admin
-  name: kubesphere
-current-context: kubesphere
-kind: Config
-preferences: {}
-users:
-- name: admin
-  user:
-    username: xxxx
-    password: xxxx
-```
-#### Get ks-mcp-server binary
-you can run command `go build -o ks-mcp-server cmd/main.go` or download from (github releases)[https://github.com/kubesphere/ks-mcp-server/releases]
-and then move it to `$PATH`.
-
-### Configuration MCP Server in Cursor
-According to [Curosr](https://docs.cursor.com/context/model-context-protocol)
+####  Cursor
+1. According to [Curosr](https://docs.cursor.com/context/model-context-protocol)
 should change the MCP Configuration. like:
 ```json
 {
   "mcpServers": {
-    "KS-MCP-Server": {
-      "command": "ks-mcp-server",
+    "KubeSphere": {
       "args": [
         "stdio",
-        "--ksconfig","[to-be-replace]/kubeconfig",
-        "--ks-apiserver","http://[to-be-replace]:30880"
-      ]
+        "--ksconfig", "<ksconfig file absolute path>",
+        "--ks-apiserver", "<KubeSphere Address>"
+      ],
+      "command": "ks-mcp-server"
     }
   }
 }
 ```
-then chat with mcp server
+`<ksconfig file absolute path>`: **Required** The absolute path of the ksconfig file.        
+`<KubeSphere Address>`: **Optional (but required for HTTP access)** The access address of the KubeSphere cluster, supporting either the `ks-console` or `ks-apiserver` service address (e.g., `http://172.10.0.1:30880`).    
+
+2. chat with mcp server
 ![cursor result](statics/cursor.png)
