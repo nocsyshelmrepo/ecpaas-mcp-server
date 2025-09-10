@@ -9,7 +9,6 @@ import (
 	"kubesphere.io/ks-mcp-server/cmd/app/options"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
 	"kubesphere.io/ks-mcp-server/pkg/tools/cluster"
-	"kubesphere.io/ks-mcp-server/pkg/tools/extension"
 	"kubesphere.io/ks-mcp-server/pkg/tools/userrole"
 	"kubesphere.io/ks-mcp-server/pkg/tools/workspace"
 	"kubesphere.io/ks-mcp-server/pkg/version"
@@ -69,13 +68,14 @@ func newStudioCommand() *cobra.Command {
 				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplication(ksconfig), workspace.GetApplicationVersion(ksconfig),
 				workspace.GetWorkspace(ksconfig), workspace.ListProjectMembers(ksconfig),
 				// register cluster
-				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.GetClusterTags(ksconfig), cluster.ListClusterMembers(ksconfig),
+				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.ListClusterMembers(ksconfig),
 				cluster.ListNodes(ksconfig), cluster.ListProjects(ksconfig), cluster.ListDeployments(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.ListDaemonsets(ksconfig),
 				cluster.ListJobs(ksconfig), cluster.ListCronJobs(ksconfig), cluster.ListPods(ksconfig), cluster.ListServices(ksconfig), cluster.ListIngresses(ksconfig),
 				cluster.ListSecrets(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig),
 				cluster.ListPersistentVolumeClaims(ksconfig), cluster.ListPersistentVolumes(ksconfig), cluster.ListStorageClasses(ksconfig),
+				cluster.CreateDeployment(ksconfig), cluster.DeleteDeployment(ksconfig),
 				// register extension
-				extension.ListExtensions(ksconfig),
+
 			)
 
 			// Start the stdio server
@@ -118,13 +118,14 @@ func newSSECommand() *cobra.Command {
 				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplication(ksconfig), workspace.GetApplicationVersion(ksconfig),
 				workspace.GetWorkspace(ksconfig), workspace.ListProjectMembers(ksconfig),
 				// register cluster
-				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.GetClusterTags(ksconfig), cluster.ListClusterMembers(ksconfig),
+				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.ListClusterMembers(ksconfig),
 				cluster.ListNodes(ksconfig), cluster.ListProjects(ksconfig), cluster.ListDeployments(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.ListDaemonsets(ksconfig),
 				cluster.ListJobs(ksconfig), cluster.ListCronJobs(ksconfig), cluster.ListPods(ksconfig), cluster.ListServices(ksconfig), cluster.ListIngresses(ksconfig),
 				cluster.ListSecrets(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig),
 				cluster.ListPersistentVolumeClaims(ksconfig), cluster.ListPersistentVolumes(ksconfig), cluster.ListStorageClasses(ksconfig),
+				cluster.CreateDeployment(ksconfig), cluster.DeleteDeployment(ksconfig),
 				// register extension
-				extension.ListExtensions(ksconfig),
+
 			)
 			// Start the sse server
 			sse := server.NewSSEServer(s)

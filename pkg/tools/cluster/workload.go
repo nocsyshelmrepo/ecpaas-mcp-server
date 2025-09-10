@@ -2,11 +2,13 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
 
 	"kubesphere.io/ks-mcp-server/pkg/constants"
@@ -339,7 +341,7 @@ the item actual is cronjobs resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of cronjobs displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of cronjobs to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName")),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project cronjobs")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -839,7 +841,7 @@ the item actual is storageclasses resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of storageclasses displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of storageclasses to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
@@ -853,7 +855,7 @@ the item actual is storageclasses resource in kubernetes.
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(storagev1.SchemeGroupVersion, cluster)
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "resources.kubesphere.io", Version: "v1alpha3"}, cluster)
 			if err != nil {
 				return nil, err
 			}
@@ -863,6 +865,85 @@ the item actual is storageclasses resource in kubernetes.
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func CreateDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("create_deployment", mcp.WithDescription(`
+Create a new deployment in the specified project and cluster.
+
+Required parameters:
+- cluster: the cluster name
+- project: the Kubernetes project
+- manifest: raw deployment manifest in JSON format
+`),
+			mcp.WithString("project", mcp.Description("the Kubernetes project"), mcp.Required()),
+			mcp.WithString("manifest", mcp.Description("deployment spec in JSON"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Extract parameters
+			project := request.Params.Arguments["project"].(string)
+			rawManifest := request.Params.Arguments["manifest"].(string)
+
+			// Parse manifest string to unstructured object
+			unstructuredObj := &unstructured.Unstructured{}
+			if err := json.Unmarshal([]byte(rawManifest), &unstructuredObj.Object); err != nil {
+				return nil, fmt.Errorf("failed to parse manifest: %v", err)
+			}
+
+			// Get Kubernetes client for apps/v1
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+
+			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments", project)
+
+			// Send POST request to create the deployment
+			data, err := client.Post().RequestURI(uri).Body(unstructuredObj).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Deployment created: %s", string(data))), nil
+		},
+	}
+}
+
+func DeleteDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_deployment", mcp.WithDescription(`
+Delete a deployment in the specified project and cluster.
+
+Required parameters:
+- project: the Kubernetes project
+- deployment: the name of the deployment to delete
+`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("deployment", mcp.Description("the deployment name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Extract parameters
+			project := request.Params.Arguments["project"].(string)
+			deployment := request.Params.Arguments["deployment"].(string)
+
+			// Get Kubernetes client for the apps/v1 group (standard deployments)
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/%s", project, deployment)
+
+			// Send DELETE request to Kubernetes API
+			err = client.Delete().RequestURI(uri).Do(ctx).Error()
+
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' deleted successfully.", deployment, project)), nil
 		},
 	}
 }

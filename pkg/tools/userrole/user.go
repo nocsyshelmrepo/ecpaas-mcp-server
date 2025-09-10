@@ -6,7 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	iamv1beta1 "kubesphere.io/api/iam/v1beta1"
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
@@ -37,11 +37,11 @@ Retrieve the paginated user list. The response will contain:
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource(iamv1beta1.ResourcesPluralUser).
+			data, err := client.Get().Resource(iamv1alpha2.ResourcesPluralUser).
 				Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
@@ -65,11 +65,11 @@ Get user information by username. The response will contain:
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal http request
-			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource(iamv1beta1.ResourcesPluralUser).SubResource(request.Params.Arguments["user"].(string)).Do(ctx).Raw()
+			data, err := client.Get().Resource(iamv1alpha2.ResourcesPluralUser).SubResource(request.Params.Arguments["user"].(string)).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}

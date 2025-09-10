@@ -6,12 +6,10 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
-	iamv1beta1 "kubesphere.io/api/iam/v1beta1"
-	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
-
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	"kubesphere.io/ks-mcp-server/pkg/constants"
-	"kubesphere.io/ks-mcp-server/pkg/constants/v1alpha3"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
 )
 
@@ -41,7 +39,7 @@ Retrieve the paginated clusters list. The response will include:
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(tenantv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "resources.kubesphere.io", Version: "v1alpha3"}, "")
 			if err != nil {
 				return nil, err
 			}
@@ -71,7 +69,7 @@ Get cluster information. The response will contain:
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
 			// deal http request
-			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "resources.kubesphere.io", Version: "v1alpha3"}, "")
 			if err != nil {
 				return nil, err
 			}
@@ -85,30 +83,30 @@ Get cluster information. The response will contain:
 	}
 }
 
-func GetClusterTags(ksconfig *kubesphere.KSConfig) server.ServerTool {
-	return server.ServerTool{
-		Tool: mcp.NewTool("get_cluster_tags", mcp.WithDescription(`
-Retrieve the paginated cluster tags map. The response will include:
-- map key is label key
-- map value is a value array.
- - value: is the actual value of key.
- - id: is the label_id which show in cluster information.
-`)),
-		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// deal http request
-			client, err := ksconfig.RestClient(clusterv1alpha1.SchemeGroupVersion, "")
-			if err != nil {
-				return nil, err
-			}
-			data, err := client.Get().Resource("labels").Do(ctx).Raw()
-			if err != nil {
-				return nil, err
-			}
+// func GetClusterTags(ksconfig *kubesphere.KSConfig) server.ServerTool {
+// 	return server.ServerTool{
+// 		Tool: mcp.NewTool("get_cluster_tags", mcp.WithDescription(`
+// Retrieve the paginated cluster tags map. The response will include:
+// - map key is label key
+// - map value is a value array.
+//  - value: is the actual value of key.
+//  - id: is the label_id which show in cluster information.
+// `)),
+// 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// 			// deal http request
+// 			client, err := ksconfig.RestClient(clusterv1alpha1.SchemeGroupVersion, "")
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			data, err := client.Get().Resource("labels").Do(ctx).Raw()
+// 			if err != nil {
+// 				return nil, err
+// 			}
 
-			return mcp.NewToolResultText(string(data)), nil
-		},
-	}
-}
+// 			return mcp.NewToolResultText(string(data)), nil
+// 		},
+// 	}
+// }
 
 func ListClusterMembers(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
@@ -118,7 +116,7 @@ Retrieve the paginated project members list. The response will include:
   - username: Maps to metadata.name
   - specific metadata.annotations fields indicate:
    - iam.kubesphere.io/clusterrole: the cluster role which this user belong to.
-2. totalItems: The total number of project members in KubeSphere.		
+2. totalItems: The total number of project members in KubeSphere.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of project members displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of project members to display. Default is "+constants.DefPage)),
@@ -127,21 +125,20 @@ Retrieve the paginated project members list. The response will include:
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			cluster := request.Params.Arguments["cluster"].(string)
-			limit := constants.DefLimit
-			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
-				limit = fmt.Sprintf("%d", reqLimit)
-			}
-			page := constants.DefPage
-			if reqPage, ok := request.Params.Arguments["page"].(int64); ok && reqPage != 0 {
-				page = fmt.Sprintf("%d", reqPage)
-			}
+			// limit := constants.DefLimit
+			// if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
+			// 	limit = fmt.Sprintf("%d", reqLimit)
+			// }
+			// page := constants.DefPage
+			// if reqPage, ok := request.Params.Arguments["page"].(int64); ok && reqPage != 0 {
+			// 	page = fmt.Sprintf("%d", reqPage)
+			// }
 			// deal http request
-			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, cluster)
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, cluster)
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource("clustermembers").
-				Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			data, err := client.Get().Resource("clustermembers").Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}

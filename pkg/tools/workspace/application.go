@@ -6,11 +6,10 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	applicationv2 "kubesphere.io/api/application/v2"
-	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
-
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
+	//openpitrixv1 "kubesphere.io/kubesphere/v3/pkg/kapis/openpitrix/v1"
 )
 
 func ListApplicationRepos(ksconfig *kubesphere.KSConfig) server.ServerTool {
@@ -38,12 +37,15 @@ Retrieve the paginated application repository list by workspaceName, it's set by
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(applicationv2.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "openpitrix.io", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).SubResource("repos").
-				Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/workspaces/%s/repos", workspace)
+
+			data, err := client.Get().RequestURI(uri).Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -72,10 +74,12 @@ Retrieve the paginated application list by project, it install by project. The r
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of applications displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of applications to display. Default is "+constants.DefPage)),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
+			workspace := request.Params.Arguments["workspace"].(string)
 			project := request.Params.Arguments["project"].(string)
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
@@ -86,12 +90,15 @@ Retrieve the paginated application list by project, it install by project. The r
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(applicationv2.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "openpitrix.io", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Namespace(project).Resource("applications").
-				Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/workspaces/%s/namespaces/%s/applications", workspace, project)
+
+			data, err := client.Get().RequestURI(uri).Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -104,7 +111,7 @@ Retrieve the paginated application list by project, it install by project. The r
 func GetApplication(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_application", mcp.WithDescription(`
-Get the application information by applicationName and project. The response will include:
+Get the application information by list_applications' cluster_id and project. The response will include:
 - applicationName: Maps to metadata.name
 - specific metadata.labels fields indicate:
  - kubesphere.io/cluster: which cluster belong to.
@@ -116,19 +123,24 @@ Get the application information by applicationName and project. The response wil
  - application.kubesphere.io/app-originalName: this application original from.
  - application.kubesphere.io/app-version: this application version which installed.
 `),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 			mcp.WithString("project", mcp.Description("the given project"), mcp.Required()),
-			mcp.WithString("applicationName", mcp.Description("the given applicationName"), mcp.Required()),
+			mcp.WithString("applicationClusterId", mcp.Description("the given applicationName id"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
+			workspace := request.Params.Arguments["workspace"].(string)
 			project := request.Params.Arguments["project"].(string)
-			applicationName := request.Params.Arguments["applicationName"].(string)
+			applicationClusterId := request.Params.Arguments["applicationClusterId"].(string)
 			// deal http request
-			client, err := ksconfig.RestClient(applicationv2.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "openpitrix.io", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Namespace(project).Resource("applications").Name(applicationName).Do(ctx).Raw()
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/workspaces/%s/namespaces/%s/applications/%s", workspace, project, applicationClusterId)
+
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -141,7 +153,7 @@ Get the application information by applicationName and project. The response wil
 func GetApplicationVersion(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_application_version", mcp.WithDescription(`
-Retrieve the paginated application versions list by applicationName and project. The response will include:
+Retrieve the paginated application versions list by list_applications' cluster_id and project. The response will include:
 1. items: An array of application versions objects containing:
 - applicationName: Maps to metadata.name
 - specific metadata.labels fields indicate:
@@ -152,11 +164,11 @@ Retrieve the paginated application versions list by applicationName and project.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of application versions displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of application versions to display. Default is "+constants.DefPage)),
-			mcp.WithString("applicationName", mcp.Description("the given applicationName"), mcp.Required()),
+			mcp.WithString("applicationTemplateAppId", mcp.Description("the given applicationTemplateAppId"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			applicationName := request.Params.Arguments["applicationName"].(string)
+			applicationTemplateAppId := request.Params.Arguments["applicationTemplateAppId"].(string)
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -166,12 +178,14 @@ Retrieve the paginated application versions list by applicationName and project.
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(applicationv2.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "openpitrix.io", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource("apps").Name(applicationName).SubResource("versions").
-				Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/apps/%s/versions", applicationTemplateAppId)
+
+			data, err := client.Get().RequestURI(uri).Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}

@@ -7,9 +7,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	iamv1beta1 "kubesphere.io/api/iam/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
 	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
-
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
 )
@@ -38,7 +38,7 @@ Retrieve the paginated workspace list. The response will include:
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(tenantv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "tenant.kubesphere.io", Version: "v1alpha3"}, "")
 			if err != nil {
 				return nil, err
 			}
@@ -65,7 +65,7 @@ Get workspace information by workspaceName. The response will contain:
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal http request
-			client, err := ksconfig.RestClient(tenantv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "tenant.kubesphere.io", Version: "v1alpha2"}, "")
 			if err != nil {
 				return nil, err
 			}
@@ -105,7 +105,7 @@ Retrieve the paginated workspace members list by workspaceName. The response wil
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
 			if err != nil {
 				return nil, err
 			}
@@ -136,11 +136,14 @@ if workspace_quota is not set. will response not found.
 			// deal request params
 			workspace := request.Params.Arguments["workspaceName"].(string)
 			// deal http request
-			client, err := ksconfig.RestClient(tenantv1beta1.SchemeGroupVersion, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).SubResource("resourcequotas", workspace).Do(ctx).Raw()
+
+			uri := fmt.Sprintf("/api/v1/namespaces/demo/resourcequotas?workspace=%s", workspace)
+
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
 			if err != nil && !bytes.Contains(data, []byte("not found")) {
 				return nil, err
 			}
@@ -178,11 +181,11 @@ Retrieve the paginated project members list. The response will include:
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(iamv1beta1.SchemeGroupVersion, cluster)
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, cluster)
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Namespace(project).Resource("namespacemembers").
+			data, err := client.Get().Namespace(project).Resource("members").
 				Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
