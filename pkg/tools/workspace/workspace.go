@@ -65,7 +65,7 @@ Get workspace information by workspaceName. The response will contain:
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal http request
-			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "tenant.kubesphere.io", Version: "v1alpha2"}, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "tenant.kubesphere.io", Version: "v1alpha3"}, "")
 			if err != nil {
 				return nil, err
 			}
@@ -120,6 +120,43 @@ Retrieve the paginated workspace members list by workspaceName. The response wil
 	}
 }
 
+func GetWorkspaceMember(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_workspace_member", mcp.WithDescription(`
+Get a specific workspace member by the name of workspace and workspace member. The response will include:
+- workspaceMemberName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspaceMemberName", mcp.Description("the given workspaceMemberName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			workspace := request.Params.Arguments["workspaceName"].(string)
+			workspaceMemberName := request.Params.Arguments["workspaceMemberName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
+			if err != nil {
+				return nil, err
+			}
+			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).Suffix("workspacemembers", workspaceMemberName).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func GetWorkspaceQuotas(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_workspace_quota", mcp.WithDescription(`
@@ -130,20 +167,19 @@ Get workspace's quotas by workspaceName. The response will contain:
  - kubesphere.io/workspace: which workspace belong to.
 if workspace_quota is not set. will response not found.
 `),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
 			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
+			project := request.Params.Arguments["project"].(string)
 			workspace := request.Params.Arguments["workspaceName"].(string)
 			// deal http request
 			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-
-			uri := fmt.Sprintf("/api/v1/namespaces/demo/resourcequotas?workspace=%s", workspace)
-
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Resource("resourcequotas").Param("workspace", workspace).Do(ctx).Raw()
 			if err != nil && !bytes.Contains(data, []byte("not found")) {
 				return nil, err
 			}

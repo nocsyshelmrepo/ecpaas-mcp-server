@@ -258,9 +258,7 @@ items: An array of globalRole data where:
 				if err != nil {
 					return nil, err
 				}
-				uri := fmt.Sprintf("/kapis/iam.kubesphere.io/v1alpha2/workspaces/%s/workspacemembers/%s/workspaceroles", workspace, rolename)
-
-				data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+				data, err := client.Get().Resource("workspaces").Name(workspace).Suffix("workspacemembers", rolename, iamv1alpha2.ResourcesPluralWorkspaceRole).Do(ctx).Raw()
 				if err != nil {
 					return nil, err
 				}
@@ -276,9 +274,7 @@ items: An array of globalRole data where:
 				if err != nil {
 					return nil, err
 				}
-				uri := fmt.Sprintf("kapis/iam.kubesphere.io/v1alpha2/namespaces/%s/members/%s/roles", project, rolename)
-
-				data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+				data, err := client.Get().Resource("namespaces").Name(project).Suffix("members", rolename, iamv1alpha2.ResourcesPluralRole).Do(ctx).Raw()
 				if err != nil {
 					return nil, err
 				}

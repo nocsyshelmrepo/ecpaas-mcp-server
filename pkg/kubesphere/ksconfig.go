@@ -89,7 +89,17 @@ func NewKSConfig(config *restclient.Config, apiserver string) (*KSConfig, error)
 }
 
 func (c *KSConfig) RestClient(gv schema.GroupVersion, cluster string) (restclient.Interface, error) {
-	apiPath := "kapis"
+	var apiPath string
+	switch gv.Group {
+	// Core Kubernetes APIs like /api/v1/namespaces
+	case "":
+		apiPath = "api"
+	// Another Kubernetes APIs
+	case "apps", "batch", "networking.k8s.io", "apiextensions.k8s.io", "storage.k8s.io":
+		apiPath = "apis"
+	default:
+		apiPath = "kapis"
+	}
 	if cluster != "" {
 		apiPath = "clusters/" + cluster + "/kapis"
 	}

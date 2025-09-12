@@ -9,7 +9,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
+
 	//openpitrixv1 "kubesphere.io/kubesphere/v3/pkg/kapis/openpitrix/v1"
+	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
 )
 
 func ListApplicationRepos(ksconfig *kubesphere.KSConfig) server.ServerTool {
@@ -41,11 +43,7 @@ Retrieve the paginated application repository list by workspaceName, it's set by
 			if err != nil {
 				return nil, err
 			}
-
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/workspaces/%s/repos", workspace)
-
-			data, err := client.Get().RequestURI(uri).Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).SubResource("repos").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -94,11 +92,7 @@ Retrieve the paginated application list by project, it install by project. The r
 			if err != nil {
 				return nil, err
 			}
-
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/workspaces/%s/namespaces/%s/applications", workspace, project)
-
-			data, err := client.Get().RequestURI(uri).Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).Suffix("namespaces", project, "applications").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -137,10 +131,7 @@ Get the application information by list_applications' cluster_id and project. Th
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/workspaces/%s/namespaces/%s/applications/%s", workspace, project, applicationClusterId)
-
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).Suffix("namespaces", project, "applications", applicationClusterId).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -182,10 +173,7 @@ Retrieve the paginated application versions list by list_applications' cluster_i
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/kapis/openpitrix.io/v1/apps/%s/versions", applicationTemplateAppId)
-
-			data, err := client.Get().RequestURI(uri).Param("sortBy", "createTime").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			data, err := client.Get().Resource("apps").Name(applicationTemplateAppId).SubResource("versions").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}

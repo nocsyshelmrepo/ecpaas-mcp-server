@@ -147,3 +147,38 @@ Retrieve the paginated project members list. The response will include:
 		},
 	}
 }
+
+func GetClustermember(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_cluster_member", mcp.WithDescription(`
+Get a specific cluster member information by name. The response will include:
+- workspaceMemberName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("clusterMemberName", mcp.Description("the given clusterMemberName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			clusterMemberName := request.Params.Arguments["clusterMemberName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
+			if err != nil {
+				return nil, err
+			}
+			data, err := client.Get().Resource("clustermembers").Name(clusterMemberName).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}

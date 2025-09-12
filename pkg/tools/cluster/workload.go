@@ -56,6 +56,43 @@ the item actual is node resource in kubernetes.
 	}
 }
 
+func GetNode(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_node", mcp.WithDescription(`
+Get the specified node by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("nodeName", mcp.Description("the given nodeName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			cluster := request.Params.Arguments["cluster"].(string)
+			nodeName := request.Params.Arguments["nodeName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
+			if err != nil {
+				return nil, err
+			}
+			data, err := client.Get().Resource("nodes").Name(nodeName).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListProjects(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_projects", mcp.WithDescription(`
@@ -119,6 +156,43 @@ the item actual is namespace resource in kubernetes.
 	}
 }
 
+func GetProject(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_project", mcp.WithDescription(`
+Get the specified project by name. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s", project)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListDeployments(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_deployments", mcp.WithDescription(`
@@ -168,6 +242,45 @@ the item actual is deployments resource in kubernetes.
 
 				return mcp.NewToolResultText(string(data)), nil
 			}
+		},
+	}
+}
+
+func GetDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_deployment", mcp.WithDescription(`
+Get the specified deployment by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("deploymentName", mcp.Description("the given deploymentName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			deploymentName := request.Params.Arguments["deploymentName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/%s", project, deploymentName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
 		},
 	}
 }
@@ -225,6 +338,45 @@ the item actual is statefulsets resource in kubernetes.
 	}
 }
 
+func GetStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_statefulset", mcp.WithDescription(`
+Get a specific statefulset by name and project. The response will include:
+- statefulsetName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("statefulsetName", mcp.Description("the given statefulsetName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			statefulsetName := request.Params.Arguments["statefulsetName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/statefulsets/%s", project, statefulsetName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListDaemonsets(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_daemonsets", mcp.WithDescription(`
@@ -274,6 +426,45 @@ the item actual is daemonsets resource in kubernetes.
 
 				return mcp.NewToolResultText(string(data)), nil
 			}
+		},
+	}
+}
+
+func GetDaemonset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_daemonset", mcp.WithDescription(`
+Get the specified daemonset by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("daemonsetName", mcp.Description("the given daemonsetName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			daemonsetName := request.Params.Arguments["daemonsetName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/daemonsets/%s", project, daemonsetName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
 		},
 	}
 }
@@ -331,6 +522,45 @@ the item actual is jobs resource in kubernetes.
 	}
 }
 
+func GetJob(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_job", mcp.WithDescription(`
+Get the specified job by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("jobName", mcp.Description("the given jobName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			jobName := request.Params.Arguments["jobName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "batch", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/batch/v1/namespaces/%s/jobs/%s", project, jobName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListCronJobs(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_cronjobs", mcp.WithDescription(`
@@ -341,16 +571,9 @@ the item actual is cronjobs resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of cronjobs displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of cronjobs to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName")),
-			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project cronjobs")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
-			project := ""
-			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
-				project = reqProject
-			}
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -360,26 +583,57 @@ the item actual is cronjobs resource in kubernetes.
 				page = fmt.Sprintf("%d", reqPage)
 			}
 			// deal http request
-			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "batch", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			switch project {
-			case "":
-				data, err := client.Get().Resource("cronjobs").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
-				if err != nil {
-					return nil, err
-				}
-
-				return mcp.NewToolResultText(string(data)), nil
-			default:
-				data, err := client.Get().Namespace(project).Resource("cronjobs").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
-				if err != nil {
-					return nil, err
-				}
-
-				return mcp.NewToolResultText(string(data)), nil
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/batch/v1/cronjobs")
+			data, err := client.Get().RequestURI(uri).Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
 			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func GetCronjob(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_cronjob", mcp.WithDescription(`
+Get the specified cronjob in the given project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("cronjobName", mcp.Description("the given cronjobName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			cronjobName := request.Params.Arguments["cronjobName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "batch", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/batch/v1/namespaces/%s/cronjobs/%s", project, cronjobName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
 		},
 	}
 }
@@ -437,6 +691,45 @@ the item actual is pods resource in kubernetes.
 	}
 }
 
+func GetPod(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_pod", mcp.WithDescription(`
+Get the specified pod by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("podName", mcp.Description("the given podName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			podName := request.Params.Arguments["podName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", project, podName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListServices(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_services", mcp.WithDescription(`
@@ -486,6 +779,45 @@ the item actual is services resource in kubernetes.
 
 				return mcp.NewToolResultText(string(data)), nil
 			}
+		},
+	}
+}
+
+func GetService(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_service", mcp.WithDescription(`
+Get a specific service by name and project. The response will include:
+- serviceName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("serviceName", mcp.Description("the given serviceName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			serviceName := request.Params.Arguments["serviceName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s/services/%s", project, serviceName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
 		},
 	}
 }
@@ -543,6 +875,45 @@ the item actual is ingresses resource in kubernetes.
 	}
 }
 
+func GetIngress(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_ingress", mcp.WithDescription(`
+Get the specified ingress by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("ingressName", mcp.Description("the given ingressName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			ingressName := request.Params.Arguments["ingressName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "networking.k8s.io", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/networking.k8s.io/v1/namespaces/%s/ingresses/%s", project, ingressName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListSecrets(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_secrets", mcp.WithDescription(`
@@ -592,6 +963,45 @@ the item actual is secrets resource in kubernetes.
 
 				return mcp.NewToolResultText(string(data)), nil
 			}
+		},
+	}
+}
+
+func GetSecret(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_secret", mcp.WithDescription(`
+Get a specific secret by name and project. The response will include:
+- secretName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("secretName", mcp.Description("the given secretName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			secretName := request.Params.Arguments["secretName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s/secrets/%s", project, secretName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
 		},
 	}
 }
@@ -649,6 +1059,45 @@ the item actual is configmaps resource in kubernetes.
 	}
 }
 
+func GetConfigmap(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_configmap", mcp.WithDescription(`
+Get a specific configmap by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("configmapName", mcp.Description("the given configmapName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			configmapName := request.Params.Arguments["configmapName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s/configmaps/%s", project, configmapName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListServiceAccounts(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_serviceaccounts", mcp.WithDescription(`
@@ -702,6 +1151,45 @@ the item actual is serviceaccounts resource in kubernetes.
 	}
 }
 
+func GetServiceaccount(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_serviceaccount", mcp.WithDescription(`
+Get a specific serviceaccount by name and project. The response will include:
+- serviceaccountName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("serviceaccountName", mcp.Description("the given serviceaccountName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			serviceaccountName := request.Params.Arguments["serviceaccountName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s/serviceaccounts/%s", project, serviceaccountName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListCustomResourceDefinitions(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_customresourcedefinitions", mcp.WithDescription(`
@@ -731,6 +1219,43 @@ the item actual is customresourcedefinitions resource in kubernetes.
 				return nil, err
 			}
 			data, err := client.Get().Resource("customresourcedefinitions").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func GetCustomResourceDefinition(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_customresourcedefinition", mcp.WithDescription(`
+Get a specific customresourcedefinition by name. The response will include:
+- customresourcedefinitionName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("customresourcedefinitionName", mcp.Description("the given customresourcedefinitionName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			customresourcedefinitionName := request.Params.Arguments["customresourcedefinitionName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apiextensions.k8s.io", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/apiextensions.k8s.io/v1/customresourcedefinitions/%s", customresourcedefinitionName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -793,6 +1318,45 @@ the item actual is persistentvolumeclaims resource in kubernetes.
 	}
 }
 
+func GetPersistentvolumeclaim(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_persistentvolumeclaim", mcp.WithDescription(`
+Get the specified persistentvolumeclaim by name and project. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("persistentvolumeclaimName", mcp.Description("the given persistentvolumeclaimName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			persistentvolumeclaimName := request.Params.Arguments["persistentvolumeclaimName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/namespaces/%s/persistentvolumeclaims/%s", project, persistentvolumeclaimName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func ListPersistentVolumes(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_persistentvolumes", mcp.WithDescription(`
@@ -822,6 +1386,43 @@ the item actual is persistentvolumes resource in kubernetes.
 				return nil, err
 			}
 			data, err := client.Get().Resource("persistentvolumes").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func GetPersistentvolume(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_persistentvolume", mcp.WithDescription(`
+Get the specified persistentvolume by name. The response will include:
+- configmapName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("persistentvolumeName", mcp.Description("the given persistentvolumeName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			persistentvolumeName := request.Params.Arguments["persistentvolumeName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/api/v1/persistentvolumes/%s", persistentvolumeName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -869,6 +1470,43 @@ the item actual is storageclasses resource in kubernetes.
 	}
 }
 
+func GetStorageclass(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_storageclass", mcp.WithDescription(`
+Get a specific storageclass by name. The response will include:
+- storageclassName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("storageclassName", mcp.Description("the given storageclassName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			storageclassName := request.Params.Arguments["storageclassName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "storage.k8s.io", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			// Construct full URI path manually
+			uri := fmt.Sprintf("/apis/storage.k8s.io/v1/storageclasses/%s", storageclassName)
+			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
 func CreateDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("create_deployment", mcp.WithDescription(`
@@ -898,7 +1536,7 @@ Required parameters:
 			if err != nil {
 				return nil, err
 			}
-
+			// Construct full URI path manually
 			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments", project)
 
 			// Send POST request to create the deployment
@@ -934,6 +1572,7 @@ Required parameters:
 			if err != nil {
 				return nil, err
 			}
+			// Construct full URI path manually
 			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/%s", project, deployment)
 
 			// Send DELETE request to Kubernetes API
