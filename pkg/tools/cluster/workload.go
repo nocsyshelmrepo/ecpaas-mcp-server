@@ -181,9 +181,7 @@ Get the specified project by name. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s", project)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -273,9 +271,7 @@ Get the specified deployment by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/%s", project, deploymentName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("deployments", deploymentName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -365,9 +361,7 @@ Get a specific statefulset by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/statefulsets/%s", project, statefulsetName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("statefulsets", statefulsetName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -457,9 +451,7 @@ Get the specified daemonset by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/daemonsets/%s", project, daemonsetName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("daemonsets", daemonsetName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -549,9 +541,7 @@ Get the specified job by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/batch/v1/namespaces/%s/jobs/%s", project, jobName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("jobs", jobName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -587,9 +577,7 @@ the item actual is cronjobs resource in kubernetes.
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/batch/v1/cronjobs")
-			data, err := client.Get().RequestURI(uri).Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+			data, err := client.Get().Resource("cronjobs").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -626,9 +614,7 @@ Get the specified cronjob in the given project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/batch/v1/namespaces/%s/cronjobs/%s", project, cronjobName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("cronjobs", cronjobName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -718,9 +704,7 @@ Get the specified pod by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", project, podName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("pods", podName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -810,9 +794,7 @@ Get a specific service by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s/services/%s", project, serviceName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("services", serviceName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -902,9 +884,7 @@ Get the specified ingress by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/networking.k8s.io/v1/namespaces/%s/ingresses/%s", project, ingressName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("ingresses", ingressName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -994,9 +974,7 @@ Get a specific secret by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s/secrets/%s", project, secretName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("secrets", secretName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1086,9 +1064,7 @@ Get a specific configmap by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s/configmaps/%s", project, configmapName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("configmaps", configmapName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1178,9 +1154,7 @@ Get a specific serviceaccount by name and project. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s/serviceaccounts/%s", project, serviceaccountName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("serviceaccounts", serviceaccountName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1253,9 +1227,7 @@ Get a specific customresourcedefinition by name. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/apiextensions.k8s.io/v1/customresourcedefinitions/%s", customresourcedefinitionName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Resource("customresourcedefinitions").Name(customresourcedefinitionName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1345,9 +1317,7 @@ Get the specified persistentvolumeclaim by name and project. The response will i
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/namespaces/%s/persistentvolumeclaims/%s", project, persistentvolumeclaimName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Namespace(project).Suffix("persistentvolumeclaims", persistentvolumeclaimName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1420,9 +1390,7 @@ Get the specified persistentvolume by name. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/api/v1/persistentvolumes/%s", persistentvolumeName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Resource("persistentvolumes").Name(persistentvolumeName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1495,9 +1463,7 @@ Get a specific storageclass by name. The response will include:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/storage.k8s.io/v1/storageclasses/%s", storageclassName)
-			data, err := client.Get().RequestURI(uri).Do(ctx).Raw()
+			data, err := client.Get().Resource("storageclasses").Name(storageclassName).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1536,11 +1502,7 @@ Required parameters:
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments", project)
-
-			// Send POST request to create the deployment
-			data, err := client.Post().RequestURI(uri).Body(unstructuredObj).Do(ctx).Raw()
+			data, err := client.Post().Namespace(project).Resource("deployments").Body(unstructuredObj).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -1568,16 +1530,11 @@ Required parameters:
 			deployment := request.Params.Arguments["deployment"].(string)
 
 			// Get Kubernetes client for the apps/v1 group (standard deployments)
-			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			// Construct full URI path manually
-			uri := fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/%s", project, deployment)
-
-			// Send DELETE request to Kubernetes API
-			err = client.Delete().RequestURI(uri).Do(ctx).Error()
-
+			err = client.Delete().Namespace(project).Suffix("deployments", deployment).Do(ctx).Error()
 			if err != nil {
 				return nil, err
 			}
