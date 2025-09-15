@@ -93,6 +93,32 @@ Get the specified node by name and project. The response will include:
 	}
 }
 
+func DeleteNode(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_node", mcp.WithDescription(`Delete the specified node by cluster and nodeName.`),
+			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("nodeName", mcp.Description("the given nodeName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			cluster := request.Params.Arguments["cluster"].(string)
+			nodeName := request.Params.Arguments["nodeName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource("nodes").Name(nodeName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Node '%s' was deleted successfully.", nodeName)), nil
+		},
+	}
+}
+
 func ListProjects(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_projects", mcp.WithDescription(`
@@ -191,6 +217,30 @@ Get the specified project by name. The response will include:
 	}
 }
 
+func DeleteProject(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_project", mcp.WithDescription(`Delete the specified project by name.`),
+			mcp.WithString("project", mcp.Description("the given project to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Project '%s' was deleted successfully.", project)), nil
+		},
+	}
+}
+
 func ListDeployments(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_deployments", mcp.WithDescription(`
@@ -277,6 +327,71 @@ Get the specified deployment by name and project. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func CreateDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("create_deployment", mcp.WithDescription(`
+Create a new deployment in the specified project and cluster.
+
+Required parameters:
+- cluster: the cluster name
+- project: the Kubernetes project
+- manifest: raw deployment manifest in JSON format
+`),
+			mcp.WithString("project", mcp.Description("the Kubernetes project"), mcp.Required()),
+			mcp.WithString("manifest", mcp.Description("deployment spec in JSON"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			rawManifest := request.Params.Arguments["manifest"].(string)
+
+			// Parse manifest string to unstructured object
+			unstructuredObj := &unstructured.Unstructured{}
+			if err := json.Unmarshal([]byte(rawManifest), &unstructuredObj.Object); err != nil {
+				return nil, fmt.Errorf("failed to parse manifest: %v", err)
+			}
+
+			// Get Kubernetes client for apps/v1
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			data, err := client.Post().Namespace(project).Resource("deployments").Body(unstructuredObj).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Deployment created: %s", string(data))), nil
+		},
+	}
+}
+
+func DeleteDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_deployment", mcp.WithDescription(`Delete a specified deployment by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("deployment", mcp.Description("the given deployment name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			deployment := request.Params.Arguments["deployment"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("deployments", deployment).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' was deleted successfully.", deployment, project)), nil
 		},
 	}
 }
@@ -371,6 +486,32 @@ Get a specific statefulset by name and project. The response will include:
 	}
 }
 
+func DeleteStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_statefulset", mcp.WithDescription(`Delete a specified statefulset by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("statefulsetName", mcp.Description("the given statefulsetName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			statefulsetName := request.Params.Arguments["statefulsetName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("statefulsets", statefulsetName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was deleted successfully.", statefulsetName, project)), nil
+		},
+	}
+}
+
 func ListDaemonsets(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_daemonsets", mcp.WithDescription(`
@@ -457,6 +598,32 @@ Get the specified daemonset by name and project. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteDaemonset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_daemonset", mcp.WithDescription(`Delete a specified daemonset by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("daemonsetName", mcp.Description("the given daemonsetName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			daemonsetName := request.Params.Arguments["daemonsetName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("daemonsets", daemonsetName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was deleted successfully.", daemonsetName, project)), nil
 		},
 	}
 }
@@ -551,6 +718,32 @@ Get the specified job by name and project. The response will include:
 	}
 }
 
+func DeleteJob(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_job", mcp.WithDescription(`Delete a specified job by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("jobName", mcp.Description("the job name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			jobName := request.Params.Arguments["jobName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "batch", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("jobs", jobName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Job '%s' in project '%s' was deleted successfully.", jobName, project)), nil
+		},
+	}
+}
+
 func ListCronJobs(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_cronjobs", mcp.WithDescription(`
@@ -620,6 +813,32 @@ Get the specified cronjob in the given project. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteCronjob(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_cronjob", mcp.WithDescription(`Delete a specified cronjob by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("cronjobName", mcp.Description("the cronjob name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			cronjobName := request.Params.Arguments["cronjobName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "batch", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("cronjobs", cronjobName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Cronjob '%s' in project '%s' was deleted successfully.", cronjobName, project)), nil
 		},
 	}
 }
@@ -714,6 +933,32 @@ Get the specified pod by name and project. The response will include:
 	}
 }
 
+func DeletePod(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_pod", mcp.WithDescription(`Delete a specified pod by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("podName", mcp.Description("the pod name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			podName := request.Params.Arguments["podName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("pods", podName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Pod '%s' in project '%s' was deleted successfully.", podName, project)), nil
+		},
+	}
+}
+
 func ListServices(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_services", mcp.WithDescription(`
@@ -800,6 +1045,32 @@ Get a specific service by name and project. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteService(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_service", mcp.WithDescription(`Delete a specified service by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("serviceName", mcp.Description("the service name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			serviceName := request.Params.Arguments["serviceName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("services", serviceName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Service '%s' in project '%s' was deleted successfully.", serviceName, project)), nil
 		},
 	}
 }
@@ -894,6 +1165,32 @@ Get the specified ingress by name and project. The response will include:
 	}
 }
 
+func DeleteIngress(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_ingress", mcp.WithDescription(`Delete a specified ingress by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("ingressName", mcp.Description("the ingress name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			ingressName := request.Params.Arguments["ingressName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "networking.k8s.io", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("ingresses", ingressName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Ingress '%s' in project '%s' was deleted successfully.", ingressName, project)), nil
+		},
+	}
+}
+
 func ListSecrets(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_secrets", mcp.WithDescription(`
@@ -980,6 +1277,32 @@ Get a specific secret by name and project. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteSecret(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_secret", mcp.WithDescription(`Delete a specified secret by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("secretName", mcp.Description("the secret name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			secretName := request.Params.Arguments["secretName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("secrets", secretName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Secret '%s' in project '%s' was deleted successfully.", secretName, project)), nil
 		},
 	}
 }
@@ -1074,6 +1397,32 @@ Get a specific configmap by name and project. The response will include:
 	}
 }
 
+func DeleteConfigmap(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_configmap", mcp.WithDescription(`Delete a specified configmap by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("configmapName", mcp.Description("the configmap name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			configmapName := request.Params.Arguments["configmapName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("configmaps", configmapName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Configmap '%s' in project '%s' was deleted successfully.", configmapName, project)), nil
+		},
+	}
+}
+
 func ListServiceAccounts(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_serviceaccounts", mcp.WithDescription(`
@@ -1160,6 +1509,32 @@ Get a specific serviceaccount by name and project. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteServiceaccount(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_serviceaccount", mcp.WithDescription(`Delete a specified serviceaccount by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("serviceaccountName", mcp.Description("the serviceaccount name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			serviceaccountName := request.Params.Arguments["serviceaccountName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("serviceaccounts", serviceaccountName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Serviceaccount '%s' in project '%s' was deleted successfully.", serviceaccountName, project)), nil
 		},
 	}
 }
@@ -1327,6 +1702,32 @@ Get the specified persistentvolumeclaim by name and project. The response will i
 	}
 }
 
+func DeletePersistentvolumeclaim(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_persistentvolumeclaim", mcp.WithDescription(`Delete a specified persistentvolumeclaim by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("persistentvolumeclaimName", mcp.Description("the persistentvolumeclaim name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			persistentvolumeclaimName := request.Params.Arguments["persistentvolumeclaimName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("persistentvolumeclaims", persistentvolumeclaimName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Persistentvolumeclaim '%s' in project '%s' was deleted successfully.", persistentvolumeclaimName, project)), nil
+		},
+	}
+}
+
 func ListPersistentVolumes(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_persistentvolumes", mcp.WithDescription(`
@@ -1396,6 +1797,30 @@ Get the specified persistentvolume by name. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeletePersistentvolume(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_persistentvolume", mcp.WithDescription(`Delete a specified persistentvolume by name.`),
+			mcp.WithString("persistentvolumeName", mcp.Description("the persistentvolume name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			persistentvolumeName := request.Params.Arguments["persistentvolumeName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource("persistentvolumes").Name(persistentvolumeName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Persistentvolume '%s' was deleted successfully.", persistentvolumeName)), nil
 		},
 	}
 }
@@ -1473,73 +1898,26 @@ Get a specific storageclass by name. The response will include:
 	}
 }
 
-func CreateDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+func DeleteStorageclass(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
-		Tool: mcp.NewTool("create_deployment", mcp.WithDescription(`
-Create a new deployment in the specified project and cluster.
-
-Required parameters:
-- cluster: the cluster name
-- project: the Kubernetes project
-- manifest: raw deployment manifest in JSON format
-`),
-			mcp.WithString("project", mcp.Description("the Kubernetes project"), mcp.Required()),
-			mcp.WithString("manifest", mcp.Description("deployment spec in JSON"), mcp.Required()),
+		Tool: mcp.NewTool("delete_storageclass", mcp.WithDescription(`Delete a specified storageclass by name.`),
+			mcp.WithString("storageclassName", mcp.Description("the storageclass name to delete"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// Extract parameters
-			project := request.Params.Arguments["project"].(string)
-			rawManifest := request.Params.Arguments["manifest"].(string)
+			// deal request params
+			storageclassName := request.Params.Arguments["storageclassName"].(string)
 
-			// Parse manifest string to unstructured object
-			unstructuredObj := &unstructured.Unstructured{}
-			if err := json.Unmarshal([]byte(rawManifest), &unstructuredObj.Object); err != nil {
-				return nil, fmt.Errorf("failed to parse manifest: %v", err)
-			}
-
-			// Get Kubernetes client for apps/v1
-			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "storage.k8s.io", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Post().Namespace(project).Resource("deployments").Body(unstructuredObj).Do(ctx).Raw()
+			err = client.Delete().Resource("storageclasses").Name(storageclassName).Do(ctx).Error()
 			if err != nil {
 				return nil, err
 			}
 
-			return mcp.NewToolResultText(fmt.Sprintf("Deployment created: %s", string(data))), nil
-		},
-	}
-}
-
-func DeleteDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
-	return server.ServerTool{
-		Tool: mcp.NewTool("delete_deployment", mcp.WithDescription(`
-Delete a deployment in the specified project and cluster.
-
-Required parameters:
-- project: the Kubernetes project
-- deployment: the name of the deployment to delete
-`),
-			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
-			mcp.WithString("deployment", mcp.Description("the deployment name to delete"), mcp.Required()),
-		),
-		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// Extract parameters
-			project := request.Params.Arguments["project"].(string)
-			deployment := request.Params.Arguments["deployment"].(string)
-
-			// Get Kubernetes client for the apps/v1 group (standard deployments)
-			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
-			if err != nil {
-				return nil, err
-			}
-			err = client.Delete().Namespace(project).Suffix("deployments", deployment).Do(ctx).Error()
-			if err != nil {
-				return nil, err
-			}
-
-			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' deleted successfully.", deployment, project)), nil
+			return mcp.NewToolResultText(fmt.Sprintf("Storageclass '%s' was deleted successfully.", storageclassName)), nil
 		},
 	}
 }

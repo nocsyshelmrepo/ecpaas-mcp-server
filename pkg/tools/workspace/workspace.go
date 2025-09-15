@@ -19,7 +19,7 @@ func ListWorkspaces(ksconfig *kubesphere.KSConfig) server.ServerTool {
 		Tool: mcp.NewTool("list_workspaces", mcp.WithDescription(`
 Retrieve the paginated workspace list. The response will include:
 1. items: An array of workspace objects containing:
-   - workspaceName: Maps to metadata.name.
+   - workspace: Maps to metadata.name.
    - administrator: Maps to spec.template.spec.manager. indicates the workspace's administrator.
    - clusters: Maps to spec.placement.clusterSelector. specifies the clusters to which the workspace is assigned.
 2. totalItems: The total number of workspaces in KubeSphere.
@@ -56,12 +56,12 @@ Retrieve the paginated workspace list. The response will include:
 func GetWorkspace(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_workspace", mcp.WithDescription(`
-Get workspace information by workspaceName. The response will contain:
-- workspaceName: Maps to metadata.name.
+Get workspace information by the name of workspace. The response will contain:
+- workspace: Maps to metadata.name.
 - administrator: Maps to spec.template.spec.manager. indicates the workspace's administrator.
 - clusters: Maps to spec.placement.clusterSelector. specifies the clusters to which the workspace is assigned.		
 `),
-			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal http request
@@ -69,7 +69,7 @@ Get workspace information by workspaceName. The response will contain:
 			if err != nil {
 				return nil, err
 			}
-			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspaceTemplate).Name(request.Params.Arguments["workspaceName"].(string)).Do(ctx).Raw()
+			data, err := client.Get().Resource(tenantv1beta1.ResourcePluralWorkspaceTemplate).Name(request.Params.Arguments["workspace"].(string)).Do(ctx).Raw()
 			if err != nil {
 				return nil, err
 			}
@@ -79,10 +79,34 @@ Get workspace information by workspaceName. The response will contain:
 	}
 }
 
+func DeleteWorkspace(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_workspace", mcp.WithDescription(`Delete a specified workspace by name.`),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			workspace := request.Params.Arguments["workspace"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "tenant.kubesphere.io", Version: "v1alpha3"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource(tenantv1beta1.ResourcePluralWorkspaceTemplate).Name(workspace).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Workspace '%s' was deleted successfully.", workspace)), nil
+		},
+	}
+}
+
 func ListWorkspaceMembers(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_workspace_members", mcp.WithDescription(`
-Retrieve the paginated workspace members list by workspaceName. The response will include:
+Retrieve the paginated workspace members list by the name of workspace. The response will include:
 1. items: An array of workspace members objects containing:
   - username: Maps to metadata.name.
   - specific metadata.annotations fields indicate:
@@ -91,11 +115,11 @@ Retrieve the paginated workspace members list by workspaceName. The response wil
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of workspace members displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of workspace members to display. Default is "+constants.DefPage)),
-			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			workspace := request.Params.Arguments["workspaceName"].(string)
+			workspace := request.Params.Arguments["workspace"].(string)
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -135,12 +159,12 @@ Get a specific workspace member by the name of workspace and workspace member. T
  - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
  - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
 `),
-			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 			mcp.WithString("workspaceMemberName", mcp.Description("the given workspaceMemberName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			workspace := request.Params.Arguments["workspaceName"].(string)
+			workspace := request.Params.Arguments["workspace"].(string)
 			workspaceMemberName := request.Params.Arguments["workspaceMemberName"].(string)
 			// deal http request
 			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
@@ -157,10 +181,36 @@ Get a specific workspace member by the name of workspace and workspace member. T
 	}
 }
 
+func DeleteWorkspaceMember(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_workspace_member", mcp.WithDescription(`Delete a specified workspaceMember by the name of workspace and workspace member.`),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspaceMemberName", mcp.Description("the workspaceMember name to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			workspace := request.Params.Arguments["workspace"].(string)
+			workspaceMemberName := request.Params.Arguments["workspaceMemberName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).Suffix("workspacemembers", workspaceMemberName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("WorkspaceMember '%s' in worsapce '%s' was deleted successfully.", workspaceMemberName, workspace)), nil
+		},
+	}
+}
+
 func GetWorkspaceQuotas(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_workspace_quota", mcp.WithDescription(`
-Get workspace's quotas by workspaceName. The response will contain:
+Get workspace's quotas by the name of workspace. The response will contain:
 - name: Maps to metadata.name, the same as workspaceName.
 - quota: the details quota information.
 - specific metadata.labels fields indicate:
@@ -168,12 +218,12 @@ Get workspace's quotas by workspaceName. The response will contain:
 if workspace_quota is not set. will response not found.
 `),
 			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
-			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			project := request.Params.Arguments["project"].(string)
-			workspace := request.Params.Arguments["workspaceName"].(string)
+			workspace := request.Params.Arguments["workspace"].(string)
 			// deal http request
 			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
 			if err != nil {

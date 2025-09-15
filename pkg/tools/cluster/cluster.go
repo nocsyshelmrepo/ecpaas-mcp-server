@@ -83,6 +83,30 @@ Get cluster information. The response will contain:
 	}
 }
 
+func DeleteCluster(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_cluster", mcp.WithDescription(`Delete the specified cluster by name.`),
+			mcp.WithString("cluster", mcp.Description("the given clusterName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			cluster := request.Params.Arguments["cluster"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "resources.kubesphere.io", Version: "v1alpha3"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource(clusterv1alpha1.ResourcesPluralCluster).Name(cluster).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Cluster '%s' was deleted successfully.", cluster)), nil
+		},
+	}
+}
+
 // func GetClusterTags(ksconfig *kubesphere.KSConfig) server.ServerTool {
 // 	return server.ServerTool{
 // 		Tool: mcp.NewTool("get_cluster_tags", mcp.WithDescription(`
@@ -179,6 +203,30 @@ Get a specific cluster member information by name. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteClusterMember(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_cluster_member", mcp.WithDescription(`Delete a specific cluster member by name.`),
+			mcp.WithString("clusterMemberName", mcp.Description("the given clusterMemberName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			clusterMemberName := request.Params.Arguments["clusterMemberName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource("clustermembers").Name(clusterMemberName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Cluster Member '%s' was deleted successfully.", clusterMemberName)), nil
 		},
 	}
 }

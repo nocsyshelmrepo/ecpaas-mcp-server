@@ -25,11 +25,11 @@ Retrieve the paginated application repository list by workspaceName, it's set by
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of application repositories displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of application repositories to display. Default is "+constants.DefPage)),
-			mcp.WithString("workspaceName", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			workspace := request.Params.Arguments["workspaceName"].(string)
+			workspace := request.Params.Arguments["workspace"].(string)
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -105,8 +105,8 @@ Retrieve the paginated application list by project, it install by project. The r
 func GetApplication(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("get_application", mcp.WithDescription(`
-Get the application information by list_applications' cluster_id and project. The response will include:
-- applicationName: Maps to metadata.name
+Get the application information by list_applications' cluster_id, project and workspace. The response will include:
+- applicationClusterId: Maps to metadata.name
 - specific metadata.labels fields indicate:
  - kubesphere.io/cluster: which cluster belong to.
  - kubesphere.io/workspace: which workspace belong to.
@@ -119,7 +119,7 @@ Get the application information by list_applications' cluster_id and project. Th
 `),
 			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
 			mcp.WithString("project", mcp.Description("the given project"), mcp.Required()),
-			mcp.WithString("applicationClusterId", mcp.Description("the given applicationName id"), mcp.Required()),
+			mcp.WithString("applicationClusterId", mcp.Description("the given applicationClusterId"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
@@ -137,6 +137,34 @@ Get the application information by list_applications' cluster_id and project. Th
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteApplication(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_application", mcp.WithDescription(`Delete a specified application by list_applications' cluster_id, project and workspace.`),
+			mcp.WithString("workspace", mcp.Description("the given workspaceName"), mcp.Required()),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("applicationClusterId", mcp.Description("the given applicationClusterId to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			workspace := request.Params.Arguments["workspace"].(string)
+			project := request.Params.Arguments["project"].(string)
+			applicationClusterId := request.Params.Arguments["applicationClusterId"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "openpitrix.io", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Resource(tenantv1beta1.ResourcePluralWorkspace).Name(workspace).Suffix("namespaces", project, "applications", applicationClusterId).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("ApplicationClusterId '%s' in project '%s' workspace '%s' was deleted successfully.", applicationClusterId, project, workspace)), nil
 		},
 	}
 }
