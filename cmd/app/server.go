@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"kubesphere.io/ks-mcp-server/cmd/app/options"
+	"kubesphere.io/ks-mcp-server/pkg/k8s"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
 	"kubesphere.io/ks-mcp-server/pkg/tools/cluster"
 	"kubesphere.io/ks-mcp-server/pkg/tools/userrole"
@@ -54,6 +55,12 @@ func newStudioCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			k8sConfig, err := k8s.NewK8sClient()
+			if err != nil {
+				return err
+			}
+
 			// create MCP server
 			s := server.NewMCPServer(
 				"KubeSphere",
@@ -68,7 +75,7 @@ func newStudioCommand() *cobra.Command {
 				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplication(ksconfig), workspace.DeleteApplication(ksconfig), workspace.GetApplicationVersion(ksconfig), workspace.ListProjectMembers(ksconfig),
 				// register cluster
 				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.DeleteCluster(ksconfig), cluster.ListClusterMembers(ksconfig), cluster.GetClustermember(ksconfig), cluster.DeleteClusterMember(ksconfig),
-				cluster.ListNodes(ksconfig), cluster.GetNode(ksconfig), cluster.DeleteNode(ksconfig), cluster.ListProjects(ksconfig), cluster.GetProject(ksconfig), cluster.DeleteProject(ksconfig), cluster.ListDeployments(ksconfig), cluster.GetDeployment(ksconfig), cluster.CreateDeployment(ksconfig), cluster.DeleteDeployment(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.GetStatefulset(ksconfig), cluster.DeleteStatefulset(ksconfig), cluster.ListDaemonsets(ksconfig), cluster.GetDaemonset(ksconfig), cluster.DeleteDaemonset(ksconfig), cluster.ListJobs(ksconfig), cluster.GetJob(ksconfig), cluster.DeleteJob(ksconfig), cluster.ListCronJobs(ksconfig), cluster.GetCronjob(ksconfig), cluster.DeleteCronjob(ksconfig), cluster.ListPods(ksconfig), cluster.GetPod(ksconfig), cluster.DeletePod(ksconfig), cluster.ListServices(ksconfig), cluster.GetService(ksconfig), cluster.DeleteService(ksconfig), cluster.ListIngresses(ksconfig), cluster.GetIngress(ksconfig), cluster.DeleteIngress(ksconfig), cluster.ListSecrets(ksconfig), cluster.GetSecret(ksconfig), cluster.DeleteSecret(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.GetConfigmap(ksconfig), cluster.DeleteConfigmap(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.GetServiceaccount(ksconfig), cluster.DeleteServiceaccount(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig), cluster.GetCustomResourceDefinition(ksconfig),
+				cluster.ListNodes(ksconfig), cluster.GetNode(ksconfig), cluster.DeleteNode(ksconfig), cluster.ListProjects(ksconfig), cluster.GetProject(ksconfig), cluster.DeleteProject(ksconfig), cluster.ListDeployments(ksconfig), cluster.GetDeployment(ksconfig), cluster.CreateDeployment(ksconfig), cluster.DeleteDeployment(ksconfig), cluster.ScaleDeployment(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.GetStatefulset(ksconfig), cluster.DeleteStatefulset(ksconfig), cluster.ScaleStatefulset(ksconfig), cluster.ListDaemonsets(ksconfig), cluster.GetDaemonset(ksconfig), cluster.DeleteDaemonset(ksconfig), cluster.ListJobs(ksconfig), cluster.GetJob(ksconfig), cluster.DeleteJob(ksconfig), cluster.ListCronJobs(ksconfig), cluster.GetCronjob(ksconfig), cluster.DeleteCronjob(ksconfig), cluster.ListPods(ksconfig), cluster.GetPod(ksconfig), cluster.LogsPod(ksconfig), cluster.DeletePod(ksconfig), cluster.ExecPod(k8sConfig), cluster.ListServices(ksconfig), cluster.GetService(ksconfig), cluster.DeleteService(ksconfig), cluster.ListIngresses(ksconfig), cluster.GetIngress(ksconfig), cluster.DeleteIngress(ksconfig), cluster.ListSecrets(ksconfig), cluster.GetSecret(ksconfig), cluster.DeleteSecret(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.GetConfigmap(ksconfig), cluster.DeleteConfigmap(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.GetServiceaccount(ksconfig), cluster.DeleteServiceaccount(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig), cluster.GetCustomResourceDefinition(ksconfig),
 				cluster.ListPersistentVolumeClaims(ksconfig), cluster.GetPersistentvolumeclaim(ksconfig), cluster.DeletePersistentvolumeclaim(ksconfig), cluster.ListPersistentVolumes(ksconfig), cluster.GetPersistentvolume(ksconfig), cluster.DeletePersistentvolume(ksconfig), cluster.ListStorageClasses(ksconfig), cluster.GetStorageclass(ksconfig), cluster.DeleteStorageclass(ksconfig),
 			)
 
@@ -98,6 +105,12 @@ func newSSECommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			k8sConfig, err := k8s.NewK8sClient()
+			if err != nil {
+				return err
+			}
+
 			// create MCP server
 			s := server.NewMCPServer(
 				"KubeSphere",
@@ -112,7 +125,7 @@ func newSSECommand() *cobra.Command {
 				workspace.ListApplicationRepos(ksconfig), workspace.ListApplications(ksconfig), workspace.GetApplication(ksconfig), workspace.DeleteApplication(ksconfig), workspace.GetApplicationVersion(ksconfig), workspace.ListProjectMembers(ksconfig),
 				// register cluster
 				cluster.ListClusters(ksconfig), cluster.GetCluster(ksconfig), cluster.DeleteCluster(ksconfig), cluster.ListClusterMembers(ksconfig), cluster.GetClustermember(ksconfig), cluster.DeleteClusterMember(ksconfig),
-				cluster.ListNodes(ksconfig), cluster.GetNode(ksconfig), cluster.DeleteNode(ksconfig), cluster.ListProjects(ksconfig), cluster.GetProject(ksconfig), cluster.DeleteProject(ksconfig), cluster.ListDeployments(ksconfig), cluster.GetDeployment(ksconfig), cluster.CreateDeployment(ksconfig), cluster.DeleteDeployment(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.GetStatefulset(ksconfig), cluster.DeleteStatefulset(ksconfig), cluster.ListDaemonsets(ksconfig), cluster.GetDaemonset(ksconfig), cluster.DeleteDaemonset(ksconfig), cluster.ListJobs(ksconfig), cluster.GetJob(ksconfig), cluster.DeleteJob(ksconfig), cluster.ListCronJobs(ksconfig), cluster.GetCronjob(ksconfig), cluster.DeleteCronjob(ksconfig), cluster.ListPods(ksconfig), cluster.GetPod(ksconfig), cluster.DeletePod(ksconfig), cluster.ListServices(ksconfig), cluster.GetService(ksconfig), cluster.DeleteService(ksconfig), cluster.ListIngresses(ksconfig), cluster.GetIngress(ksconfig), cluster.DeleteIngress(ksconfig), cluster.ListSecrets(ksconfig), cluster.GetSecret(ksconfig), cluster.DeleteSecret(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.GetConfigmap(ksconfig), cluster.DeleteConfigmap(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.GetServiceaccount(ksconfig), cluster.DeleteServiceaccount(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig), cluster.GetCustomResourceDefinition(ksconfig),
+				cluster.ListNodes(ksconfig), cluster.GetNode(ksconfig), cluster.DeleteNode(ksconfig), cluster.ListProjects(ksconfig), cluster.GetProject(ksconfig), cluster.DeleteProject(ksconfig), cluster.ListDeployments(ksconfig), cluster.GetDeployment(ksconfig), cluster.CreateDeployment(ksconfig), cluster.DeleteDeployment(ksconfig), cluster.ScaleDeployment(ksconfig), cluster.ListStatefulsets(ksconfig), cluster.GetStatefulset(ksconfig), cluster.DeleteStatefulset(ksconfig), cluster.ScaleStatefulset(ksconfig), cluster.ListDaemonsets(ksconfig), cluster.GetDaemonset(ksconfig), cluster.DeleteDaemonset(ksconfig), cluster.ListJobs(ksconfig), cluster.GetJob(ksconfig), cluster.DeleteJob(ksconfig), cluster.ListCronJobs(ksconfig), cluster.GetCronjob(ksconfig), cluster.DeleteCronjob(ksconfig), cluster.ListPods(ksconfig), cluster.GetPod(ksconfig), cluster.LogsPod(ksconfig), cluster.DeletePod(ksconfig), cluster.ExecPod(k8sConfig), cluster.ListServices(ksconfig), cluster.GetService(ksconfig), cluster.DeleteService(ksconfig), cluster.ListIngresses(ksconfig), cluster.GetIngress(ksconfig), cluster.DeleteIngress(ksconfig), cluster.ListSecrets(ksconfig), cluster.GetSecret(ksconfig), cluster.DeleteSecret(ksconfig), cluster.ListConfigmaps(ksconfig), cluster.GetConfigmap(ksconfig), cluster.DeleteConfigmap(ksconfig), cluster.ListServiceAccounts(ksconfig), cluster.GetServiceaccount(ksconfig), cluster.DeleteServiceaccount(ksconfig), cluster.ListCustomResourceDefinitions(ksconfig), cluster.GetCustomResourceDefinition(ksconfig),
 				cluster.ListPersistentVolumeClaims(ksconfig), cluster.GetPersistentvolumeclaim(ksconfig), cluster.DeletePersistentvolumeclaim(ksconfig), cluster.ListPersistentVolumes(ksconfig), cluster.GetPersistentvolume(ksconfig), cluster.DeletePersistentvolume(ksconfig), cluster.ListStorageClasses(ksconfig), cluster.GetStorageclass(ksconfig), cluster.DeleteStorageclass(ksconfig),
 			)
 			// Start the sse server

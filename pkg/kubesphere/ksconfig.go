@@ -144,6 +144,10 @@ type ksClient struct {
 	mu         sync.RWMutex
 }
 
+func (c *KSConfig) Config() *restclient.Config {
+	return c.config
+}
+
 type token struct {
 	created      time.Time
 	AccessToken  string `json:"access_Token"`

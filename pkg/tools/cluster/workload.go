@@ -4,13 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"net/url"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	k8sCoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
-
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/constants/v1alpha3"
 	"kubesphere.io/ks-mcp-server/pkg/kubesphere"
@@ -396,6 +403,42 @@ func DeleteDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	}
 }
 
+func ScaleDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("scale_deployment", mcp.WithDescription(`scale a specified deployment by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("deploymentName", mcp.Description("the given deployment name to scale"), mcp.Required()),
+			mcp.WithNumber("replicas", mcp.Description("number of replicas to scale"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			deploymentName := request.Params.Arguments["deploymentName"].(string)
+
+			// `replicas` comes as float64, convert to int32
+			replicasFloat := request.Params.Arguments["replicas"].(float64)
+			replicas := int32(replicasFloat)
+
+			// Create patch body
+			patch := fmt.Sprintf(`{"spec":{"replicas":%d}}`, replicas)
+			patchBytes := []byte(patch)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Patch(types.MergePatchType).Namespace(project).Resource("deployments").
+				Name(deploymentName).Body(patchBytes).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' was scaled successfully.", deploymentName, project)), nil
+		},
+	}
+}
+
 func ListStatefulsets(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_statefulsets", mcp.WithDescription(`
@@ -508,6 +551,42 @@ func DeleteStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 			}
 
 			return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was deleted successfully.", statefulsetName, project)), nil
+		},
+	}
+}
+
+func ScaleStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("scale_statefulset", mcp.WithDescription(`scale a specified statefulset by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("statefulsetName", mcp.Description("the given statefulset name to scale"), mcp.Required()),
+			mcp.WithNumber("replicas", mcp.Description("number of replicas"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			statefulsetName := request.Params.Arguments["statefulsetName"].(string)
+
+			// `replicas` comes as float64, convert to int32
+			replicasFloat := request.Params.Arguments["replicas"].(float64)
+			replicas := int32(replicasFloat)
+
+			// Create patch body
+			patch := fmt.Sprintf(`{"spec":{"replicas":%d}}`, replicas)
+			patchBytes := []byte(patch)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Patch(types.MergePatchType).Namespace(project).Resource("statefulsets").
+				Name(statefulsetName).Body(patchBytes).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was scaled successfully.", statefulsetName, project)), nil
 		},
 	}
 }
@@ -931,6 +1010,153 @@ Get the specified pod by name and project. The response will include:
 			return mcp.NewToolResultText(string(data)), nil
 		},
 	}
+}
+
+func LogsPod(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("logs_pod", mcp.WithDescription(`show logs of a specified pod by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("podName", mcp.Description("the pod name to logs"), mcp.Required()),
+			mcp.WithString("containerName", mcp.Description("container name (optional)")),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			podName := request.Params.Arguments["podName"].(string)
+			containerName := request.Params.Arguments["containerName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			data, err := client.Get().Namespace(project).Suffix("pods", podName, "log").Param("container", containerName).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func ExecPod(restConfig *rest.Config) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("exec_pod",
+			mcp.WithDescription(`
+Execute a command in the specified pod using Kubernetes exec API.
+This tool executes commands in pods and returns the output directly.
+Supports both interactive and non-interactive command execution.
+
+Parameters:
+- project: The namespace/project name
+- podName: The target pod name  
+- command: Command to execute (e.g., "/bin/bash", "ls -la")
+- stdin: Enable stdin stream (true/false, default: false)
+- stdout: Enable stdout stream (true/false, default: true)
+- stderr: Enable stderr stream (true/false, default: true)
+- tty: Enable TTY for interactive sessions (true/false, default: false)
+- containerName: Specific container name (optional)
+			`),
+			mcp.WithString("project", mcp.Description("the project/namespace name"), mcp.Required()),
+			mcp.WithString("podName", mcp.Description("the pod name"), mcp.Required()),
+			mcp.WithString("command", mcp.Description("command to execute (e.g., '/bin/bash' or 'ls -la')"), mcp.Required()),
+			mcp.WithString("stdin", mcp.Description("enable stdin stream (true/false, default: false)")),
+			mcp.WithString("stdout", mcp.Description("enable stdout stream (true/false, default: true)")),
+			mcp.WithString("stderr", mcp.Description("enable stderr stream (true/false, default: true)")),
+			mcp.WithString("tty", mcp.Description("enable TTY for interactive sessions (true/false, default: false)")),
+			mcp.WithString("containerName", mcp.Description("container name (optional)")),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Parse request parameters
+			project := request.Params.Arguments["project"].(string)
+			podName := request.Params.Arguments["podName"].(string)
+			commandStr := request.Params.Arguments["command"].(string)
+
+			// Parse optional parameters with defaults
+			stdinStr := getStringParamWithDefault(request.Params.Arguments, "stdin", "false")
+			stdoutStr := getStringParamWithDefault(request.Params.Arguments, "stdout", "true")
+			stderrStr := getStringParamWithDefault(request.Params.Arguments, "stderr", "true")
+			ttyStr := getStringParamWithDefault(request.Params.Arguments, "tty", "false")
+			containerName := ""
+			if reqContainerName, ok := request.Params.Arguments["containerName"].(string); ok && reqContainerName != "" {
+				containerName = reqContainerName
+			}
+
+			// Convert string parameters to booleans
+			stdin := parseBool(stdinStr)
+			stdout := parseBool(stdoutStr)
+			stderr := parseBool(stderrStr)
+			tty := parseBool(ttyStr)
+
+			// Create Kubernetes client
+			k8sClient, err := kubernetes.NewForConfig(restConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
+			}
+
+			// Parse command string into slice
+			command := strings.Fields(commandStr)
+
+			// Prepare exec request
+			req := k8sClient.CoreV1().RESTClient().Post().
+				Resource("pods").
+				Name(podName).
+				Namespace(project).
+				SubResource("exec").
+				VersionedParams(&k8sCoreV1.PodExecOptions{
+					Command:   command,
+					Container: containerName,
+					Stdin:     stdin,
+					Stdout:    stdout,
+					Stderr:    stderr,
+					TTY:       tty,
+				}, scheme.ParameterCodec)
+
+			// Modify the URL scheme to use WebSocket
+			execURL := req.URL()
+			websocketURL := convertToWebSocketURL(execURL, restConfig)
+
+			// Return result as structured content
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{Text: fmt.Sprintf("WebSocket URL: %s", websocketURL)},
+				},
+			}, nil
+		},
+	}
+}
+
+// convertToWebSocketURL modifies the Kubernetes exec URL to use ws/wss
+func convertToWebSocketURL(u *url.URL, config *rest.Config) string {
+	switch u.Scheme {
+	case "https":
+		u.Scheme = "wss"
+	case "http":
+		u.Scheme = "ws"
+	}
+	if config != nil && config.Host != "" {
+		clusterURL, err := url.Parse(config.Host)
+		if err == nil {
+			u.Host = clusterURL.Host
+		}
+	}
+	return u.String()
+}
+
+// Helper function to get string parameter with default value
+func getStringParamWithDefault(args map[string]interface{}, key, defaultValue string) string {
+	if val, exists := args[key]; exists {
+		if strVal, ok := val.(string); ok && strVal != "" {
+			return strVal
+		}
+	}
+	return defaultValue
+}
+
+// Helper function to parse boolean from string
+func parseBool(s string) bool {
+	return strings.ToLower(s) == "true"
 }
 
 func DeletePod(ksconfig *kubesphere.KSConfig) server.ServerTool {
