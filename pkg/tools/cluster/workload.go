@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-
 	"net/url"
+	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/pkg/errors"
 	k8sCoreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -386,19 +387,19 @@ func DeleteDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			project := request.Params.Arguments["project"].(string)
-			deployment := request.Params.Arguments["deployment"].(string)
+			deploymentName := request.Params.Arguments["deploymentName"].(string)
 
 			// deal http request
 			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
 			if err != nil {
 				return nil, err
 			}
-			err = client.Delete().Namespace(project).Suffix("deployments", deployment).Do(ctx).Error()
+			err = client.Delete().Namespace(project).Suffix("deployments", deploymentName).Do(ctx).Error()
 			if err != nil {
 				return nil, err
 			}
 
-			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' was deleted successfully.", deployment, project)), nil
+			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' was deleted successfully.", deploymentName, project)), nil
 		},
 	}
 }
@@ -435,6 +436,204 @@ func ScaleDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
 			}
 
 			return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' was scaled successfully.", deploymentName, project)), nil
+		},
+	}
+}
+
+func RolloutDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("rollout_deployment", mcp.WithDescription(`Rollout a specified deployment by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("deploymentName", mcp.Description("the given deployment name to rollout"), mcp.Required()),
+			mcp.WithString("action", mcp.Description("rollout subcommand, only two subcommands (restart) or (undo)"), mcp.Required()),
+			mcp.WithString("templateSpec", mcp.Description("The desired spec.template of the Deployment in JSON format. This typically comes from a historical Replicaset. Required only when initiating a rollout undo operation.")),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			deploymentName := request.Params.Arguments["deploymentName"].(string)
+			action := ""
+			if reqAction, ok := request.Params.Arguments["action"].(string); ok &&
+				(reqAction == constants.RolloutRestart || reqAction == constants.RolloutUndo) {
+				action = reqAction
+			}
+			switch action {
+			case constants.RolloutRestart:
+				// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
+				currentTime := time.Now().UTC().Format(time.RFC3339)
+				patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
+
+				// deal http request
+				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+				if err != nil {
+					return nil, err
+				}
+				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("deployments", deploymentName).Body(patchBytes).Do(ctx).Error()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' in project '%s' was rollout restarted successfully.", deploymentName, project)), nil
+			case constants.RolloutUndo:
+				templateSpecStr, ok := request.Params.Arguments["templateSpec"].(string)
+				if !ok || templateSpecStr == "" {
+					return nil, errors.New("missing or invalid parameter: 'templateSpec'")
+				}
+
+				// 2. Unmarshal the input template spec string into a v1.PodTemplateSpec object
+				var templateSpec k8sCoreV1.PodTemplateSpec
+				if err := json.Unmarshal([]byte(templateSpecStr), &templateSpec); err != nil {
+					return nil, errors.Wrap(err, "failed to unmarshal templateSpec parameter")
+				}
+
+				// 3. Create the JSON Patch payload
+				// We are performing a strategic merge patch to update the spec.template
+				patchPayload := map[string]interface{}{
+					"spec": map[string]interface{}{
+						"template": templateSpec,
+					},
+				}
+
+				patchBytes, err := json.Marshal(patchPayload)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to marshal patch payload")
+				}
+
+				// 4. Get the KubeSphere RestClient
+				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+				if err != nil {
+					return nil, err
+				}
+
+				// 5. Perform the PATCH request
+				// The URL path will be like: /apis/apps/v1/namespaces/{namespace}/deployments/{name}
+				data, err := client.Patch(types.StrategicMergePatchType).Namespace(project).Resource("deployments").Name(deploymentName).Body(patchBytes).Do(ctx).Raw()
+
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to patch deployment %s/%s", project, deploymentName)
+				}
+
+				return mcp.NewToolResultText(fmt.Sprintf("Deployment '%s' successfully rollout undone. Response: %s", deploymentName, string(data))), nil
+			default:
+				return nil, errors.Errorf("Unsupport action, it should be one of %s", strings.Join([]string{constants.RolloutRestart, constants.RolloutUndo}, ","))
+			}
+
+		},
+	}
+}
+
+func ListReplicasets(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("list_replicasets", mcp.WithDescription(`
+Retrieve the paginated replicasets list. The response will include:
+1. items: An array of replicasets objects containing:
+the item actual is replicasets resource in kubernetes.
+2. totalItems: The total number of replicasets in KubeSphere.	
+`),
+			mcp.WithNumber("limit", mcp.Description("Number of replicasets displayed at once. Default is "+constants.DefLimit)),
+			mcp.WithNumber("page", mcp.Description("Page number of replicasets to display. Default is "+constants.DefPage)),
+			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project replicasets")),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			cluster := request.Params.Arguments["cluster"].(string)
+			project := ""
+			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
+				project = reqProject
+			}
+			limit := constants.DefLimit
+			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
+				limit = fmt.Sprintf("%d", reqLimit)
+			}
+			page := constants.DefPage
+			if reqPage, ok := request.Params.Arguments["page"].(int64); ok && reqPage != 0 {
+				page = fmt.Sprintf("%d", reqPage)
+			}
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, cluster)
+			if err != nil {
+				return nil, err
+			}
+			switch project {
+			case "":
+				data, err := client.Get().Resource("replicasets").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(string(data)), nil
+			default:
+				data, err := client.Get().Namespace(project).Resource("replicasets").Param("sortBy", "name").Param("limit", limit).Param("page", page).Do(ctx).Raw()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(string(data)), nil
+			}
+		},
+	}
+}
+
+func GetReplicaset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("get_replicaset", mcp.WithDescription(`
+Get a specific replicaset by name and project. The response will include:
+- replicasetName: Maps to metadata.name
+- specific metadata.labels fields indicate:
+ - app: belong to which app
+ - app.kubernetes.io/managed-by: which tool manages the Kubernetes resources.
+ - chart: belong to which Helm chart and version.
+ - heritage: which tool created the resource
+ - release: belong to which Helm release name
+- specific metadata.annotations fields indicate:
+ - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
+ - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
+`),
+			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
+			mcp.WithString("replicasetName", mcp.Description("the given replicasetName"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			replicasetName := request.Params.Arguments["replicasetName"].(string)
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			data, err := client.Get().Namespace(project).Suffix("replicasets", replicasetName).Do(ctx).Raw()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func DeleteReplicaset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("delete_replicaset", mcp.WithDescription(`Delete a specified replicaset by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("replicasetName", mcp.Description("the given replicasetName to delete"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			replicasetName := request.Params.Arguments["replicasetName"].(string)
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
+			}
+			err = client.Delete().Namespace(project).Suffix("replicasets", replicasetName).Do(ctx).Error()
+			if err != nil {
+				return nil, err
+			}
+
+			return mcp.NewToolResultText(fmt.Sprintf("Replicaset '%s' in project '%s' was deleted successfully.", replicasetName, project)), nil
 		},
 	}
 }
@@ -591,6 +790,59 @@ func ScaleStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	}
 }
 
+func RolloutStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("rollout_statefulset", mcp.WithDescription(`Rollout a specified statefulset by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("statefulset", mcp.Description("the given statefulset name to rollout"), mcp.Required()),
+			mcp.WithString("action", mcp.Description("rollout subcommand, only two subcommands (restart) or (undo)"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			statefulsetName := request.Params.Arguments["statefulsetName"].(string)
+			action := ""
+			if reqAction, ok := request.Params.Arguments["action"].(string); ok &&
+				(reqAction == constants.RolloutRestart || reqAction == constants.RolloutUndo) {
+				action = reqAction
+			}
+			switch action {
+			case constants.RolloutRestart:
+				// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
+				currentTime := time.Now().UTC().Format(time.RFC3339)
+				patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
+
+				// deal http request
+				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+				if err != nil {
+					return nil, err
+				}
+				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("statefulsets", statefulsetName).Body(patchBytes).Do(ctx).Error()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was rollout restarted successfully.", statefulsetName, project)), nil
+			case constants.RolloutUndo:
+				// deal http request
+				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+				if err != nil {
+					return nil, err
+				}
+				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("statefulsets", statefulsetName).Do(ctx).Error()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was rollout undoed successfully.", statefulsetName, project)), nil
+			default:
+				return nil, errors.Errorf("Unsupport action, it should be one of %s", strings.Join([]string{constants.RolloutRestart, constants.RolloutUndo}, ","))
+			}
+
+		},
+	}
+}
+
 func ListDaemonsets(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("list_daemonsets", mcp.WithDescription(`
@@ -703,6 +955,59 @@ func DeleteDaemonset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 			}
 
 			return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was deleted successfully.", daemonsetName, project)), nil
+		},
+	}
+}
+
+func RolloutDaemonset(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("rollout_daemonset", mcp.WithDescription(`Rollout a specified daemonset by name and project.`),
+			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
+			mcp.WithString("daemonset", mcp.Description("the given daemonset name to rollout"), mcp.Required()),
+			mcp.WithString("action", mcp.Description("rollout subcommand, only two subcommands (restart) or (undo)"), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project := request.Params.Arguments["project"].(string)
+			daemonsetName := request.Params.Arguments["daemonsetName"].(string)
+			action := ""
+			if reqAction, ok := request.Params.Arguments["action"].(string); ok &&
+				(reqAction == constants.RolloutRestart || reqAction == constants.RolloutUndo) {
+				action = reqAction
+			}
+			switch action {
+			case constants.RolloutRestart:
+				// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
+				currentTime := time.Now().UTC().Format(time.RFC3339)
+				patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
+
+				// deal http request
+				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+				if err != nil {
+					return nil, err
+				}
+				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("daemonsets", daemonsetName).Body(patchBytes).Do(ctx).Error()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was rollout restarted successfully.", daemonsetName, project)), nil
+			case constants.RolloutUndo:
+				// deal http request
+				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+				if err != nil {
+					return nil, err
+				}
+				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("daemonsets", daemonsetName).Do(ctx).Error()
+				if err != nil {
+					return nil, err
+				}
+
+				return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was rollout undoed successfully.", daemonsetName, project)), nil
+			default:
+				return nil, errors.Errorf("Unsupport action, it should be one of %s", strings.Join([]string{constants.RolloutRestart, constants.RolloutUndo}, ","))
+			}
+
 		},
 	}
 }
