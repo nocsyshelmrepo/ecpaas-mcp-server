@@ -792,53 +792,30 @@ func ScaleStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 
 func RolloutStatefulset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
-		Tool: mcp.NewTool("rollout_statefulset", mcp.WithDescription(`Rollout a specified statefulset by name and project.`),
+		Tool: mcp.NewTool("rollout_statefulset", mcp.WithDescription(`Rollout restart a specified statefulset by name and project.`),
 			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
 			mcp.WithString("statefulset", mcp.Description("the given statefulset name to rollout"), mcp.Required()),
-			mcp.WithString("action", mcp.Description("rollout subcommand, only two subcommands (restart) or (undo)"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			project := request.Params.Arguments["project"].(string)
 			statefulsetName := request.Params.Arguments["statefulsetName"].(string)
-			action := ""
-			if reqAction, ok := request.Params.Arguments["action"].(string); ok &&
-				(reqAction == constants.RolloutRestart || reqAction == constants.RolloutUndo) {
-				action = reqAction
+
+			// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
+			currentTime := time.Now().UTC().Format(time.RFC3339)
+			patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
 			}
-			switch action {
-			case constants.RolloutRestart:
-				// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
-				currentTime := time.Now().UTC().Format(time.RFC3339)
-				patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
-
-				// deal http request
-				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
-				if err != nil {
-					return nil, err
-				}
-				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("statefulsets", statefulsetName).Body(patchBytes).Do(ctx).Error()
-				if err != nil {
-					return nil, err
-				}
-
-				return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was rollout restarted successfully.", statefulsetName, project)), nil
-			case constants.RolloutUndo:
-				// deal http request
-				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
-				if err != nil {
-					return nil, err
-				}
-				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("statefulsets", statefulsetName).Do(ctx).Error()
-				if err != nil {
-					return nil, err
-				}
-
-				return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was rollout undoed successfully.", statefulsetName, project)), nil
-			default:
-				return nil, errors.Errorf("Unsupport action, it should be one of %s", strings.Join([]string{constants.RolloutRestart, constants.RolloutUndo}, ","))
+			err = client.Patch(types.MergePatchType).Namespace(project).Suffix("statefulsets", statefulsetName).Body(patchBytes).Do(ctx).Error()
+			if err != nil {
+				return nil, err
 			}
 
+			return mcp.NewToolResultText(fmt.Sprintf("Statefulset '%s' in project '%s' was rollout restarted successfully.", statefulsetName, project)), nil
 		},
 	}
 }
@@ -961,53 +938,30 @@ func DeleteDaemonset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 
 func RolloutDaemonset(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
-		Tool: mcp.NewTool("rollout_daemonset", mcp.WithDescription(`Rollout a specified daemonset by name and project.`),
+		Tool: mcp.NewTool("rollout_daemonset", mcp.WithDescription(`Rollout restart a specified daemonset by name and project.`),
 			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
 			mcp.WithString("daemonset", mcp.Description("the given daemonset name to rollout"), mcp.Required()),
-			mcp.WithString("action", mcp.Description("rollout subcommand, only two subcommands (restart) or (undo)"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
 			project := request.Params.Arguments["project"].(string)
 			daemonsetName := request.Params.Arguments["daemonsetName"].(string)
-			action := ""
-			if reqAction, ok := request.Params.Arguments["action"].(string); ok &&
-				(reqAction == constants.RolloutRestart || reqAction == constants.RolloutUndo) {
-				action = reqAction
+
+			// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
+			currentTime := time.Now().UTC().Format(time.RFC3339)
+			patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
+			if err != nil {
+				return nil, err
 			}
-			switch action {
-			case constants.RolloutRestart:
-				// Prepare patch to update annotation "kubectl.kubernetes.io/restartedAt" with current timestamp
-				currentTime := time.Now().UTC().Format(time.RFC3339)
-				patchBytes := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, currentTime))
-
-				// deal http request
-				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
-				if err != nil {
-					return nil, err
-				}
-				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("daemonsets", daemonsetName).Body(patchBytes).Do(ctx).Error()
-				if err != nil {
-					return nil, err
-				}
-
-				return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was rollout restarted successfully.", daemonsetName, project)), nil
-			case constants.RolloutUndo:
-				// deal http request
-				client, err := ksconfig.RestClient(schema.GroupVersion{Group: "apps", Version: "v1"}, "")
-				if err != nil {
-					return nil, err
-				}
-				err = client.Patch(types.MergePatchType).Namespace(project).Suffix("daemonsets", daemonsetName).Do(ctx).Error()
-				if err != nil {
-					return nil, err
-				}
-
-				return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was rollout undoed successfully.", daemonsetName, project)), nil
-			default:
-				return nil, errors.Errorf("Unsupport action, it should be one of %s", strings.Join([]string{constants.RolloutRestart, constants.RolloutUndo}, ","))
+			err = client.Patch(types.MergePatchType).Namespace(project).Suffix("daemonsets", daemonsetName).Body(patchBytes).Do(ctx).Error()
+			if err != nil {
+				return nil, err
 			}
 
+			return mcp.NewToolResultText(fmt.Sprintf("Daemonset '%s' in project '%s' was rollout restarted successfully.", daemonsetName, project)), nil
 		},
 	}
 }
