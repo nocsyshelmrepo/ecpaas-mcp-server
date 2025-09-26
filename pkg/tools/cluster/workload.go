@@ -15,6 +15,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/pkg/errors"
 	k8sCoreV1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -225,6 +226,63 @@ Get the specified project by name. The response will include:
 			}
 
 			return mcp.NewToolResultText(string(data)), nil
+		},
+	}
+}
+
+func CreateProject(ksconfig *kubesphere.KSConfig) server.ServerTool {
+	return server.ServerTool{
+		Tool: mcp.NewTool("create_project", mcp.WithDescription(`
+Create a new Kubernetes Namespace (KubeSphere Project) with the specified name.
+This action is equivalent to 'kubectl create namespace [PROJECT_NAME]'.
+`),
+			mcp.WithString("project", mcp.Description("The name of the new project (namespace) to create."), mcp.Required()),
+		),
+		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// deal request params
+			project, ok := request.Params.Arguments["project"].(string)
+			if !ok || project == "" {
+				return nil, fmt.Errorf("project is required and must be a string")
+			}
+
+			// define the Namespace object to be created
+			namespace := k8sCoreV1.Namespace{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Namespace",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: project,
+					// You can add KubeSphere-specific labels or annotations here if required,
+					// but for a plain 'kubectl create ns' equivalent, just the name is enough.
+					Labels: map[string]string{
+						// Example KubeSphere label if needed, but keeping it simple for 'kubectl create ns' equivalent
+						// "kubesphere.io/workspace": "default-workspace",
+					},
+				},
+			}
+
+			// serialize the Namespace object to JSON
+			namespaceJSON, err := json.Marshal(namespace)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal Namespace object: %w", err)
+			}
+
+			// deal http request
+			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
+			if err != nil {
+				return nil, fmt.Errorf("failed to get Kubernetes REST client: %w", err)
+			}
+
+			data, err := client.Post().Resource("namespaces").Body(namespaceJSON).Do(ctx).Raw()
+
+			if err != nil {
+				// The K8s API returns specific status errors (e.g., already exists), which should be propagated.
+				return nil, fmt.Errorf("failed to create project '%s': %w", project, err)
+			}
+
+			// 6. Return the success result (usually the created object)
+			return mcp.NewToolResultText(fmt.Sprintf("Project '%s' created successfully. API Response: %s", project, string(data))), nil
 		},
 	}
 }
