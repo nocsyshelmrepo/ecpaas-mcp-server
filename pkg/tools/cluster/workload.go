@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
+
+	// "net/url"
+	"bytes"
+	"net/http"
 	"strings"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	tenantv1beta1 "kubesphere.io/api/tenant/v1beta1"
 	"kubesphere.io/ks-mcp-server/pkg/constants"
 	"kubesphere.io/ks-mcp-server/pkg/constants/v1alpha3"
@@ -1299,10 +1303,9 @@ func LogsPod(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	}
 }
 
-func ExecPod(restConfig *rest.Config) server.ServerTool {
+func ExecPod(k8sConfig *rest.Config) server.ServerTool {
 	return server.ServerTool{
-		Tool: mcp.NewTool("exec_pod",
-			mcp.WithDescription(`
+		Tool: mcp.NewTool("exec_pod", mcp.WithDescription(`
 Execute a command in the specified pod using Kubernetes exec API.
 This tool executes commands in pods and returns the output directly.
 Supports both interactive and non-interactive command execution.
@@ -1316,49 +1319,44 @@ Parameters:
 - stderr: Enable stderr stream (true/false, default: true)
 - tty: Enable TTY for interactive sessions (true/false, default: false)
 - containerName: Specific container name (optional)
-			`),
-			mcp.WithString("project", mcp.Description("the project/namespace name"), mcp.Required()),
-			mcp.WithString("podName", mcp.Description("the pod name"), mcp.Required()),
-			mcp.WithString("command", mcp.Description("command to execute (e.g., '/bin/bash' or 'ls -la')"), mcp.Required()),
-			mcp.WithString("stdin", mcp.Description("enable stdin stream (true/false, default: false)")),
-			mcp.WithString("stdout", mcp.Description("enable stdout stream (true/false, default: true)")),
-			mcp.WithString("stderr", mcp.Description("enable stderr stream (true/false, default: true)")),
-			mcp.WithString("tty", mcp.Description("enable TTY for interactive sessions (true/false, default: false)")),
-			mcp.WithString("containerName", mcp.Description("container name (optional)")),
+`),
+			mcp.WithString("project", mcp.Description("The given project.")),
+			mcp.WithString("podName", mcp.Description("The given podName.")),
+			mcp.WithString("containerName", mcp.Description("The given containerName. Optional. Uses the first container if omitted.")),
+			mcp.WithString("command", mcp.Description("The command to execute in the container, e.g., 'ls -l /etc'.")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			// Parse request parameters
-			project := request.Params.Arguments["project"].(string)
-			podName := request.Params.Arguments["podName"].(string)
-			commandStr := request.Params.Arguments["command"].(string)
+			// deal request params
+			project, ok := request.Params.Arguments["project"].(string)
+			if !ok || project == "" {
+				return nil, fmt.Errorf("required parameter 'project' is missing or not a string")
+			}
+			podName, ok := request.Params.Arguments["podName"].(string)
+			if !ok || podName == "" {
+				return nil, fmt.Errorf("required parameter 'podName' is missing or not a string")
+			}
+			commandStr, ok := request.Params.Arguments["command"].(string)
+			if !ok || commandStr == "" {
+				return nil, fmt.Errorf("required parameter 'command' is missing or not a string")
+			}
+			containerName, _ := request.Params.Arguments["containerName"].(string) // Optional
 
-			// Parse optional parameters with defaults
-			stdinStr := getStringParamWithDefault(request.Params.Arguments, "stdin", "false")
-			stdoutStr := getStringParamWithDefault(request.Params.Arguments, "stdout", "true")
-			stderrStr := getStringParamWithDefault(request.Params.Arguments, "stderr", "true")
-			ttyStr := getStringParamWithDefault(request.Params.Arguments, "tty", "false")
-			containerName := ""
-			if reqContainerName, ok := request.Params.Arguments["containerName"].(string); ok && reqContainerName != "" {
-				containerName = reqContainerName
+			// Execute the command via shell for robustness
+			command := []string{"/bin/sh", "-c", commandStr}
+
+			// check if k8sConfig is nil before using it
+			if k8sConfig == nil {
+				return nil, fmt.Errorf("Kubernetes rest.Config is nil")
 			}
 
-			// Convert string parameters to booleans
-			stdin := parseBool(stdinStr)
-			stdout := parseBool(stdoutStr)
-			stderr := parseBool(stderrStr)
-			tty := parseBool(ttyStr)
-
-			// Create Kubernetes client
-			k8sClient, err := kubernetes.NewForConfig(restConfig)
+			// create a Kubernetes clientset
+			clientset, err := kubernetes.NewForConfig(k8sConfig)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
+				return nil, fmt.Errorf("failed to create Kubernetes clientset: %w", err)
 			}
 
-			// Parse command string into slice
-			command := strings.Fields(commandStr)
-
-			// Prepare exec request
-			req := k8sClient.CoreV1().RESTClient().Post().
+			// deal http request
+			req := clientset.CoreV1().RESTClient().Post().
 				Resource("pods").
 				Name(podName).
 				Namespace(project).
@@ -1366,56 +1364,38 @@ Parameters:
 				VersionedParams(&k8sCoreV1.PodExecOptions{
 					Command:   command,
 					Container: containerName,
-					Stdin:     stdin,
-					Stdout:    stdout,
-					Stderr:    stderr,
-					TTY:       tty,
+					Stdin:     false,
+					Stdout:    true,
+					Stderr:    true,
+					TTY:       false,
 				}, scheme.ParameterCodec)
 
-			// Modify the URL scheme to use WebSocket
-			execURL := req.URL()
-			websocketURL := convertToWebSocketURL(execURL, restConfig)
+			// create the SPDY executor
+			exec, err := remotecommand.NewSPDYExecutor(k8sConfig, http.MethodPost, req.URL())
+			if err != nil {
+				return nil, fmt.Errorf("failed to create SPDY executor: %w", err)
+			}
 
-			// Return result as structured content
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					mcp.TextContent{Text: fmt.Sprintf("WebSocket URL: %s", websocketURL)},
-				},
-			}, nil
+			// set up buffers for capturing output
+			var stdout, stderr bytes.Buffer
+
+			// execute the command
+			err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+				Stdout: &stdout,
+				Stderr: &stderr,
+				Tty:    false,
+			})
+
+			if err != nil {
+				// Execution failed, but we still return the output for context
+				return mcp.NewToolResultText(
+					fmt.Sprintf("Execution failed: %v\n%s", err, stderr.String()),
+				), nil // Return nil error so the mcp framework doesn't treat it as a framework failure
+			}
+
+			return mcp.NewToolResultText(stdout.String()), nil
 		},
 	}
-}
-
-// convertToWebSocketURL modifies the Kubernetes exec URL to use ws/wss
-func convertToWebSocketURL(u *url.URL, config *rest.Config) string {
-	switch u.Scheme {
-	case "https":
-		u.Scheme = "wss"
-	case "http":
-		u.Scheme = "ws"
-	}
-	if config != nil && config.Host != "" {
-		clusterURL, err := url.Parse(config.Host)
-		if err == nil {
-			u.Host = clusterURL.Host
-		}
-	}
-	return u.String()
-}
-
-// Helper function to get string parameter with default value
-func getStringParamWithDefault(args map[string]interface{}, key, defaultValue string) string {
-	if val, exists := args[key]; exists {
-		if strVal, ok := val.(string); ok && strVal != "" {
-			return strVal
-		}
-	}
-	return defaultValue
-}
-
-// Helper function to parse boolean from string
-func parseBool(s string) bool {
-	return strings.ToLower(s) == "true"
 }
 
 func DeletePod(ksconfig *kubesphere.KSConfig) server.ServerTool {
