@@ -28,7 +28,7 @@ Retrieve the paginated roles list. The response will contain:
 			mcp.WithNumber("limit", mcp.Description("Number of roles displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of roles to display. Default is "+constants.DefPage)),
 			mcp.WithString("level", mcp.Description("role level. it's four level: global (platform-level), cluster (cluster-level), workspace (workspace-level), namespace (project-level)"), mcp.Required()),
-			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace.")),
+			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace. Default is "+constants.DefCluster)),
 			mcp.WithString("workspace", mcp.Description("role in which workspace. require when level is workspace.")),
 			mcp.WithString("project", mcp.Description("role in which project. require when level is namespace.")),
 		),
@@ -62,7 +62,10 @@ Retrieve the paginated roles list. The response will contain:
 
 				return mcp.NewToolResultText(string(data)), nil
 			case constants.ClusterLevel:
-				cluster := request.Params.Arguments["cluster"].(string)
+				cluster := constants.DefCluster
+				if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+					cluster = reqCluster
+				}
 				client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, cluster)
 				if err != nil {
 					return nil, err
@@ -91,7 +94,10 @@ Retrieve the paginated roles list. The response will contain:
 
 				return mcp.NewToolResultText(string(data)), nil
 			case constants.ProjectLevel:
-				cluster := request.Params.Arguments["cluster"].(string)
+				cluster := constants.DefCluster
+				if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+					cluster = reqCluster
+				}
 				project, ok := request.Params.Arguments["project"].(string)
 				if !ok || project == "" {
 					return nil, errors.Errorf("project is not allow empty when level is namespace")
@@ -124,7 +130,7 @@ Get role information by roleName. The response will contain:
 `),
 			mcp.WithString("level", mcp.Description("role level. it's three level: global (platform-level), workspace (workspace-level), namespace (project-level)"), mcp.Required()),
 			mcp.WithString("workspace", mcp.Description("role in which workspace. require when level is workspace.")),
-			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace.")),
+			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace. Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("role in which project. require when level is namespace.")),
 			mcp.WithString("roleName", mcp.Description("the given roleName"), mcp.Required()),
 		),
@@ -150,7 +156,10 @@ Get role information by roleName. The response will contain:
 
 				return mcp.NewToolResultText(string(data)), nil
 			case constants.ClusterLevel:
-				cluster := request.Params.Arguments["cluster"].(string)
+				cluster := constants.DefCluster
+				if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+					cluster = reqCluster
+				}
 				client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, cluster)
 				if err != nil {
 					return nil, err
@@ -177,7 +186,10 @@ Get role information by roleName. The response will contain:
 
 				return mcp.NewToolResultText(string(data)), nil
 			case constants.ProjectLevel:
-				cluster := request.Params.Arguments["cluster"].(string)
+				cluster := constants.DefCluster
+				if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+					cluster = reqCluster
+				}
 				project, ok := request.Params.Arguments["project"].(string)
 				if !ok || project == "" {
 					return nil, errors.Errorf("project is not allow empty when level is namespace")
@@ -204,7 +216,7 @@ func DeleteRole(ksconfig *kubesphere.KSConfig) server.ServerTool {
 		Tool: mcp.NewTool("delete_role", mcp.WithDescription(`Delete a specified role by name, level, worksapce and project.`),
 			mcp.WithString("level", mcp.Description("role level. it's three level: global (platform-level), workspace (workspace-level), namespace (project-level)"), mcp.Required()),
 			mcp.WithString("workspace", mcp.Description("role in which workspace. require when level is workspace.")),
-			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace.")),
+			mcp.WithString("cluster", mcp.Description("the given clusterName which role belong to. require when level is cluster, namespace. Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("role in which project. require when level is namespace.")),
 			mcp.WithString("roleName", mcp.Description("the given roleName to delete"), mcp.Required()),
 		),
@@ -231,7 +243,10 @@ func DeleteRole(ksconfig *kubesphere.KSConfig) server.ServerTool {
 
 				return mcp.NewToolResultText(fmt.Sprintf("GlobalRole '%s' was deleted successfully.", roleName)), nil
 			case constants.ClusterLevel:
-				cluster := request.Params.Arguments["cluster"].(string)
+				cluster := constants.DefCluster
+				if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+					cluster = reqCluster
+				}
 				client, err := ksconfig.RestClient(iamv1alpha2.SchemeGroupVersion, cluster)
 				if err != nil {
 					return nil, err
@@ -258,7 +273,10 @@ func DeleteRole(ksconfig *kubesphere.KSConfig) server.ServerTool {
 
 				return mcp.NewToolResultText(fmt.Sprintf("WorkspaceRole '%s' was deleted successfully.", roleName)), nil
 			case constants.ProjectLevel:
-				cluster := request.Params.Arguments["cluster"].(string)
+				cluster := constants.DefCluster
+				if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+					cluster = reqCluster
+				}
 				project, ok := request.Params.Arguments["project"].(string)
 				if !ok || project == "" {
 					return nil, errors.Errorf("project is not allow empty when level is namespace")

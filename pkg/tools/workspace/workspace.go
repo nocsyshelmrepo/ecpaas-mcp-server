@@ -251,12 +251,15 @@ Retrieve the paginated project members list. The response will include:
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of project members displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of project members to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := request.Params.Arguments["project"].(string)
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {

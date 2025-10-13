@@ -41,11 +41,14 @@ the item actual is node resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of nodes displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of nodes to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -84,12 +87,15 @@ Get the specified node by name and project. The response will include:
  - meta.helm.sh/release-name: which Helm release create and manages the kubernetes resource
  - meta.helm.sh/release-namespace: which namespace where the Helm release is installed
 `),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("nodeName", mcp.Description("the given nodeName"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			nodeName := request.Params.Arguments["nodeName"].(string)
 			// deal http request
 			client, err := ksconfig.RestClient(v1alpha3.ResourcesGroupVersion, cluster)
@@ -109,12 +115,15 @@ Get the specified node by name and project. The response will include:
 func DeleteNode(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("delete_node", mcp.WithDescription(`Delete the specified node by cluster and nodeName.`),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("nodeName", mcp.Description("the given nodeName to delete"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			nodeName := request.Params.Arguments["nodeName"].(string)
 
 			// deal http request
@@ -147,12 +156,15 @@ the item actual is namespace resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of projects displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of projects to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("workspace", mcp.Description("the given workspaceName")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			workspace := ""
 			if reqWorkspace, ok := request.Params.Arguments["workspace"].(string); ok && reqWorkspace != "" {
 				workspace = reqWorkspace
@@ -321,12 +333,15 @@ the item actual is deployments resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of deployments displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of deployments to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project deployments")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -594,12 +609,15 @@ the item actual is replicasets resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of replicasets displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of replicasets to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project replicasets")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -710,12 +728,15 @@ the item actual is statefulsets resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of statefulsets displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of statefulsets to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project statefulsets")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -892,12 +913,15 @@ the item actual is daemonsets resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of daemonsets displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of daemonsets to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project daemonsets")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1038,12 +1062,15 @@ the item actual is jobs resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of jobs displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of jobs to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project jobs")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1253,12 +1280,15 @@ the item actual is pods resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of pods displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of pods to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project pods")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1492,12 +1522,15 @@ the item actual is services resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of services displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of services to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project services")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1608,12 +1641,15 @@ the item actual is ingresses resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of ingresses displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of ingresses to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project ingresses")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1724,12 +1760,15 @@ the item actual is secrets resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of secrets displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of secrets to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project secrets")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1840,12 +1879,15 @@ the item actual is configmaps resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of configmaps displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of configmaps to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project configmaps")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -1956,12 +1998,15 @@ the item actual is serviceaccounts resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of serviceaccounts displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of serviceaccounts to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project serviceaccounts")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -2072,11 +2117,14 @@ the item actual is customresourcedefinitions resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of customresourcedefinitions displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of customresourcedefinitions to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -2145,12 +2193,15 @@ the item actual is persistentvolumeclaims resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of persistentvolumeclaims displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of persistentvolumeclaims to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 			mcp.WithString("project", mcp.Description("the given projectName, if empty will return all project persistentvolumeclaims")),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			project := ""
 			if reqProject, ok := request.Params.Arguments["project"].(string); ok && reqProject != "" {
 				project = reqProject
@@ -2261,11 +2312,14 @@ the item actual is persistentvolumes resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of persistentvolumes displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of persistentvolumes to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)
@@ -2358,11 +2412,14 @@ the item actual is storageclasses resource in kubernetes.
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of storageclasses displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of storageclasses to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName")),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			limit := constants.DefLimit
 			if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 				limit = fmt.Sprintf("%d", reqLimit)

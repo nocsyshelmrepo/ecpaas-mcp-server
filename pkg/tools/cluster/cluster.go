@@ -63,11 +63,14 @@ Get cluster information. The response will contain:
  - cluster-role.kubesphere.io/edge: the cluster is edge cluster which deploy in edge node.
  - label.cluster.kubesphere.io/xhn72r: the xhn72r of label_id is the tags of cluster.
 `),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			// deal http request
 			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "resources.kubesphere.io", Version: "v1alpha3"}, "")
 			if err != nil {
@@ -86,11 +89,14 @@ Get cluster information. The response will contain:
 func DeleteCluster(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("delete_cluster", mcp.WithDescription(`Delete the specified cluster by name.`),
-			mcp.WithString("cluster", mcp.Description("the given clusterName to delete"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 
 			// deal http request
 			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "resources.kubesphere.io", Version: "v1alpha3"}, "")
@@ -144,11 +150,14 @@ Retrieve the paginated project members list. The response will include:
 `),
 			mcp.WithNumber("limit", mcp.Description("Number of project members displayed at once. Default is "+constants.DefLimit)),
 			mcp.WithNumber("page", mcp.Description("Page number of project members to display. Default is "+constants.DefPage)),
-			mcp.WithString("cluster", mcp.Description("the given clusterName"), mcp.Required()),
+			mcp.WithString("cluster", mcp.Description("the given clusterName, Default is "+constants.DefCluster)),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
-			cluster := request.Params.Arguments["cluster"].(string)
+			cluster := constants.DefCluster
+			if reqCluster, ok := request.Params.Arguments["cluster"].(string); ok && reqCluster != "" {
+				cluster = reqCluster
+			}
 			// limit := constants.DefLimit
 			// if reqLimit, ok := request.Params.Arguments["limit"].(int64); ok && reqLimit != 0 {
 			// 	limit = fmt.Sprintf("%d", reqLimit)
