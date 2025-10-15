@@ -9,11 +9,11 @@ require (
 	helm.sh/helm/v3 v3.19.0
 	k8s.io/api v0.34.0
 	k8s.io/apimachinery v0.34.0
+	k8s.io/cli-runtime v0.34.0
 	k8s.io/client-go v0.34.0
 	k8s.io/component-base v0.34.0
 	kubesphere.io/api v0.0.0-20250324022925-a500956374e5
 	kubesphere.io/client-go v0.3.2-0.20250324023018-5d50914a8979
-	sigs.k8s.io/controller-runtime v0.19.1
 )
 
 require (
@@ -112,13 +112,13 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.34.0 // indirect
 	k8s.io/apiserver v0.34.0 // indirect
-	k8s.io/cli-runtime v0.34.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
 	k8s.io/kubectl v0.34.0 // indirect
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
 	sigs.k8s.io/application v0.8.3 // indirect
+	sigs.k8s.io/controller-runtime v0.19.1 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/kustomize/api v0.20.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.20.1 // indirect
