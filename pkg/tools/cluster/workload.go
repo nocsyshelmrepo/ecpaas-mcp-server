@@ -459,7 +459,7 @@ func DeleteDeployment(ksconfig *kubesphere.KSConfig) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("delete_deployment", mcp.WithDescription(`Delete a specified deployment by name and project.`),
 			mcp.WithString("project", mcp.Description("the Kubesphere project"), mcp.Required()),
-			mcp.WithString("deployment", mcp.Description("the given deployment name to delete"), mcp.Required()),
+			mcp.WithString("deploymentName", mcp.Description("the given deployment name to delete"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params
@@ -1374,7 +1374,10 @@ func LogsPod(ksconfig *kubesphere.KSConfig) server.ServerTool {
 			// deal request params
 			project := request.Params.Arguments["project"].(string)
 			podName := request.Params.Arguments["podName"].(string)
-			containerName := request.Params.Arguments["containerName"].(string)
+			containerName := ""
+			if reqContainerName, ok := request.Params.Arguments["containerName"].(string); ok && reqContainerName != "" {
+				containerName = reqContainerName
+			}
 
 			// deal http request
 			client, err := ksconfig.RestClient(schema.GroupVersion{Group: "", Version: "v1"}, "")
@@ -1408,10 +1411,10 @@ Parameters:
 - tty: Enable TTY for interactive sessions (true/false, default: false)
 - containerName: Specific container name (optional)
 `),
-			mcp.WithString("project", mcp.Description("The given project.")),
-			mcp.WithString("podName", mcp.Description("The given podName.")),
+			mcp.WithString("project", mcp.Description("The given project."), mcp.Required()),
+			mcp.WithString("podName", mcp.Description("The given podName."), mcp.Required()),
 			mcp.WithString("containerName", mcp.Description("The given containerName. Optional. Uses the first container if omitted.")),
-			mcp.WithString("command", mcp.Description("The command to execute in the container, e.g., 'ls -l /etc'.")),
+			mcp.WithString("command", mcp.Description("The command to execute in the container, e.g., 'ls -l /etc'."), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// deal request params

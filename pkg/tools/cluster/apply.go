@@ -23,7 +23,7 @@ Applies a Kubernetes resource defined in YAML format using server-side apply.
 This is similar to 'kubectl apply --server-side --force-conflicts'.
 The YAML content must contain a single, valid Kubernetes resource.
 `),
-			mcp.WithString("yaml_content", mcp.Description("The full YAML content of the Kubernetes resource to apply.")),
+			mcp.WithString("yaml_content", mcp.Description("The full YAML content of the Kubernetes resource to apply."), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// 1. Validate and get YAML content argument

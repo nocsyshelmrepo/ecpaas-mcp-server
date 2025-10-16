@@ -21,11 +21,11 @@ func HelmInstallChart(config *rest.Config) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("helm_install_chart",
 			mcp.WithDescription("Add Helm repo, update it, and install chart."),
-			mcp.WithString("release_name", mcp.Description("Name of the Helm release")),
-			mcp.WithString("chart", mcp.Description("Chart name (e.g. kyverno/kyverno)")),
-			mcp.WithString("project", mcp.Description("project to install the chart into")),
-			mcp.WithString("repo_name", mcp.Description("Name of the Helm repo (e.g. kyverno)")),
-			mcp.WithString("repo_url", mcp.Description("URL of the Helm repo (e.g. https://kyverno.github.io/helm)")),
+			mcp.WithString("release_name", mcp.Description("Name of the Helm release"), mcp.Required()),
+			mcp.WithString("chart", mcp.Description("Chart name (e.g. kyverno/kyverno)"), mcp.Required()),
+			mcp.WithString("project", mcp.Description("project to install the chart into"), mcp.Required()),
+			mcp.WithString("repo_name", mcp.Description("Name of the Helm repo (e.g. kyverno)"), mcp.Required()),
+			mcp.WithString("repo_url", mcp.Description("URL of the Helm repo (e.g. https://kyverno.github.io/helm)"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			releaseName := request.Params.Arguments["release_name"].(string)
@@ -107,8 +107,8 @@ func HelmUninstallChart(config *rest.Config) server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool("helm_uninstall_chart",
 			mcp.WithDescription("Uninstall a Helm release from a Kubernetes namespace."),
-			mcp.WithString("release_name", mcp.Description("Name of the Helm release to uninstall")),
-			mcp.WithString("project", mcp.Description("Namespace where the release is installed")),
+			mcp.WithString("release_name", mcp.Description("Name of the Helm release to uninstall"), mcp.Required()),
+			mcp.WithString("project", mcp.Description("Namespace where the release is installed"), mcp.Required()),
 		),
 		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			releaseName := request.Params.Arguments["release_name"].(string)
